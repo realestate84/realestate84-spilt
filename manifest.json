@@ -1,0 +1,26 @@
+{
+  "name": "매물관리시스템",
+  "short_name": "검단지역",
+  "description": "매물관리시스템",
+  "start_url": "/realestate84/",
+  "scope": "/realestate84/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f6fb",
+  "theme_color": "#3a7ef6",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
