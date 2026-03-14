@@ -64,6 +64,9 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:0
 /* ── 컨테이너 ─────────────────────────────── */
 .container{max-width:1500px;margin:0 auto;padding:24px;display:flex;flex-direction:column;height:calc(100vh - 60px - env(safe-area-inset-top,0));}
 
+/* split 레이아웃 안에서는 container height 고정값 해제 */
+.list-panel > .container{height:auto;max-width:100%;margin:0;flex:1;min-height:0;}
+
 /* ── 통계 바 ──────────────────────────────── */
 .stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:16px;flex-shrink:0;}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 16px;display:flex;align-items:center;gap:10px;}
@@ -117,3 +120,97 @@ th{position:relative;}
 .mobile-drawer button{width:100%;text-align:left;margin-bottom:4px;border-radius:8px;padding:10px 14px;font-size:13px;}
 .mobile-overlay{display:none;position:fixed;inset:0;z-index:140;}
 .mobile-overlay.open{display:block;}
+
+
+/* ════════════════════════════════════════════
+   분할 레이아웃 (좌: 고객문의 / 우: 매물리스트)
+   ════════════════════════════════════════════ */
+
+/* mainScreen → flex column, 화면 전체 높이 */
+#mainScreen{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+#mainScreen[style*="display: none"],
+#mainScreen[style*="display:none"]{display:none !important;}
+#mainScreen > header,
+#mainScreen > .notice-ticker{flex-shrink:0;}
+
+/* 좌우 분할 래퍼 */
+.split-layout{display:flex;flex-direction:row !important;flex:1;min-height:0;overflow:hidden;}
+
+/* ── 왼쪽: 고객문의 패널 ── */
+.customer-panel{
+  width:380px;
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  border-right:1px solid var(--border);
+  background:var(--surface);
+  overflow:hidden;
+}
+.customer-panel-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+  background:var(--surface);
+}
+/* 고객 목록 영역 (상단 45%) */
+.customer-panel-body{
+  display:flex;
+  flex-direction:column;
+  padding:10px 12px 6px;
+  flex:0 0 auto;
+  max-height:45%;
+  min-height:160px;
+  overflow:hidden;
+  border-bottom:1px solid var(--border);
+}
+.customer-panel-body .table-wrap{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  border-radius:8px;
+}
+/* 고객 상세 영역 (하단 나머지) */
+.customer-detail-area{
+  flex:1;
+  min-height:0;
+  padding:10px 12px;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.customer-detail-area #customerDetail{
+  flex:1;
+  min-height:0;
+  overflow:auto;
+}
+
+/* ── 오른쪽: 매물리스트 패널 ── */
+.list-panel{
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+/* 필터바: split 레이아웃 안에서 sticky top 재조정 */
+.list-panel .filter-bar{top:0;}
+
+/* ── 모바일 대응 (768px 이하) ── */
+@media(max-width:768px){
+  #mainScreen{height:auto;overflow:visible;}
+  .split-layout{flex-direction:column;overflow:visible;height:auto;}
+  .customer-panel{
+    width:100%;
+    border-right:none;
+    border-bottom:2px solid var(--border);
+    max-height:52vh;
+  }
+  .customer-panel-body{max-height:30vh;}
+  .customer-detail-area{max-height:22vh;}
+  .list-panel{min-height:50vh;}
+  .list-panel .container{padding:12px 14px;}
+}
