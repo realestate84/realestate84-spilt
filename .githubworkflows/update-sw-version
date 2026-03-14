@@ -1,0 +1,32 @@
+name: Auto Update Service Worker Version
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 버전 타임스탬프 생성 및 적용
+        run: |
+          VERSION=$(date -u +"%Y-%m-%d-%H%M%S")
+          echo "새 버전: $VERSION"
+          sed -i "s/const CACHE_VERSION = '.*'/const CACHE_VERSION = '$VERSION'/" service-worker.js
+
+      - name: 변경사항 커밋 & 푸시
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add service-worker.js
+          git diff --staged --quiet || git commit -m "🔄 SW 버전 자동 업데이트"
+          git push
