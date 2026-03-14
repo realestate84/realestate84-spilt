@@ -208,6 +208,19 @@ th{position:relative;}
   display:flex;
   flex-direction:column;
   overflow:hidden;
+  position:relative; /* 열기 탭 위치 기준 */
+}
+
+/* 고객패널 토글 애니메이션 */
+.customer-panel{
+  transition: width 0.25s ease, min-width 0.25s ease, opacity 0.2s ease;
+}
+.customer-panel.collapsed{
+  width:0 !important;
+  min-width:0 !important;
+  overflow:hidden;
+  opacity:0;
+  border-right:none;
 }
 
 /* 필터바: split 레이아웃 안에서 sticky top 재조정 */
