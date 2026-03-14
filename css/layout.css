@@ -126,30 +126,28 @@ th{position:relative;}
    분할 레이아웃 (좌: 고객문의 / 우: 매물리스트)
    ════════════════════════════════════════════ */
 
-/* body의 overflow:hidden 때문에 명시적으로 높이 고정 */
+/* mainScreen: body 전체를 채우는 flex 컨테이너 */
 #mainScreen{
   display:flex !important;
   flex-direction:column !important;
-  width:100%;
   height:100vh;
-  max-height:100vh;
   overflow:hidden;
-  position:fixed;
-  top:0; left:0; right:0; bottom:0;
 }
 #mainScreen[style*="display: none"],
 #mainScreen[style*="display:none"]{display:none !important;}
-#mainScreen > header,
-#mainScreen > .notice-ticker{flex-shrink:0;}
 
-/* 좌우 분할 래퍼 */
+/* 헤더, 티커는 높이 고정 */
+#mainScreen > header{ flex-shrink:0; position:relative; }
+#mainScreen > .notice-ticker{ flex-shrink:0; position:relative; top:auto; }
+
+/* 좌우 분할 래퍼: 헤더 아래 남은 공간 전부 차지 */
 .split-layout{
   display:flex !important;
   flex-direction:row !important;
   flex:1 1 0;
-  width:100%;
   min-height:0;
   overflow:hidden;
+  width:100%;
 }
 
 /* ── 왼쪽: 고객문의 패널 ── */
@@ -230,3 +228,7 @@ th{position:relative;}
   .list-panel{min-height:50vh;}
   .list-panel .container{padding:12px 14px;}
 }
+
+/* body/html 높이 보정 (base.css의 body overflow:hidden과 함께 작동) */
+html{ height:100%; }
+body{ height:100vh; overflow:hidden; }
