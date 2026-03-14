@@ -126,15 +126,31 @@ th{position:relative;}
    분할 레이아웃 (좌: 고객문의 / 우: 매물리스트)
    ════════════════════════════════════════════ */
 
-/* mainScreen → flex column, 화면 전체 높이 */
-#mainScreen{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+/* body의 overflow:hidden 때문에 명시적으로 높이 고정 */
+#mainScreen{
+  display:flex !important;
+  flex-direction:column !important;
+  width:100%;
+  height:100vh;
+  max-height:100vh;
+  overflow:hidden;
+  position:fixed;
+  top:0; left:0; right:0; bottom:0;
+}
 #mainScreen[style*="display: none"],
 #mainScreen[style*="display:none"]{display:none !important;}
 #mainScreen > header,
 #mainScreen > .notice-ticker{flex-shrink:0;}
 
 /* 좌우 분할 래퍼 */
-.split-layout{display:flex;flex-direction:row !important;flex:1;min-height:0;overflow:hidden;}
+.split-layout{
+  display:flex !important;
+  flex-direction:row !important;
+  flex:1 1 0;
+  width:100%;
+  min-height:0;
+  overflow:hidden;
+}
 
 /* ── 왼쪽: 고객문의 패널 ── */
 .customer-panel{
