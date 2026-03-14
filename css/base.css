@@ -1,0 +1,52 @@
+/* ── 변수 ─────────────────────────────────── */
+:root {
+  --bg:#f4f6fb; --surface:#fff; --surface2:#eef1f8; --border:#dde2f0;
+  --accent:#3a7ef6; --accent2:#6c47f5; --text:#1a1f36; --text-muted:#7a85a8;
+  --danger:#e04a5a;
+}
+
+/* ── 다크모드 ─────────────────────────────── */
+body.dark {
+  --bg:#0c1017;--surface:#131920;--surface2:#1a2130;
+  --border:#1e2d3d;--border2:#243447;
+  --text:#e2eaf4;--text2:#8fa3b8;--text3:#4a6278;
+  --blue:#3b82f6;--blue-dim:rgba(59,130,246,.12);
+  --green:#10b981;--green-dim:rgba(16,185,129,.12);
+  --amber:#f59e0b;--amber-dim:rgba(245,158,11,.12);
+  --red:#ef4444;--red-dim:rgba(239,68,68,.12);
+  --purple:#8b5cf6;--purple-dim:rgba(139,92,246,.12);
+  --shadow:0 1px 4px rgba(0,0,0,.3);
+  --shadow-md:0 4px 24px rgba(0,0,0,.5);
+  --accent:#6b9ff8; --accent2:#9b7ef8;
+  --text-muted:#6a7090; --danger:#e06070;
+}
+body.dark .mobile-drawer { background:var(--surface) !important; }
+body.dark .login-card { background:var(--surface) !important; color:var(--text) !important; }
+body.dark .btn-outline { background:transparent; color:var(--text-muted); border-color:var(--border); }
+body.dark .btn-primary { background:linear-gradient(135deg,var(--accent),var(--accent2)); }
+body.dark .tag { opacity:0.85; }
+body.dark .form-input, body.dark .form-textarea, body.dark .form-select { background:var(--bg); color:var(--text); border-color:var(--border); }
+body.dark .search-input, body.dark .filter-select { background:var(--bg); color:var(--text); }
+body.dark thead { background:var(--surface2); }
+body.dark .detail-section { border-color:var(--border); }
+body.dark .doc-row { background:var(--bg); }
+body.dark .ad-light:not(.on):not(.dim1):not(.dim2):not(.warn):not(.ready) { background:#3a3f55; }
+body.dark .dep-light:not(.on) { background:#3a3f55; }
+body.dark .table-wrap { background:var(--surface); border-color:var(--border); }
+body.dark td { border-bottom-color:var(--border); }
+body.dark tr:hover td { background:rgba(107,159,248,0.05); }
+body.dark tr:hover td:first-child { background:var(--surface); filter:brightness(1.05); }
+
+/* ── 리셋 & 기본 ──────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;height:100vh;overflow:hidden;padding-top:env(safe-area-inset-top,0);}
+
+/* ── 스크롤바 ─────────────────────────────── */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* ── 애니메이션 ───────────────────────────── */
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes modalIn{from{opacity:0;transform:translateY(18px) scale(0.97)}to{opacity:1;transform:none}}

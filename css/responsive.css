@@ -1,0 +1,20 @@
+/* ── 태블릿 이하 (1024px) ─────────────────── */
+@media(max-width:1024px){
+  .header-actions{display:none !important;}
+  .mobile-menu-btn{display:flex !important;}
+  header{flex-wrap:nowrap;gap:10px;}
+}
+
+/* ── 모바일 (768px) ───────────────────────── */
+@media(max-width:768px){
+  .logo{white-space:normal;font-size:14px;min-width:0;flex:1 1 auto;}
+  .filter-bar{position:sticky;top:80px;z-index:99;}
+  .container{padding:12px;padding-bottom:max(20px, env(safe-area-inset-bottom, 20px));}
+  .form-grid{grid-template-columns:1fr;}
+  .detail-grid{grid-template-columns:1fr;}
+  .mobile-drawer.open{display:block !important;}
+  #customersModal .modal-body{flex-direction:column;overflow:auto;}
+  #customersModal .customer-left{width:100% !important;min-height:30vh;order:2;}
+  #customersModal .customer-left .table-wrap{min-height:185px !important;max-height:37vh !important;flex:1 1 185px;}
+  #customersModal .customer-right{order:1;}
+}
