@@ -1,10 +1,10 @@
 // 깃허브에 올릴 때마다 날짜+번호를 바꿔주세요 → 앱이 자동으로 최신 버전 감지
-const CACHE_VERSION = '2026-03-14-230255';
-const CACHE_NAME = 'sarom-realestate-' + CACHE_VERSION;
+const CACHE_VERSION = '2026-03-15-000000';
+const CACHE_NAME = 'realestate-split-' + CACHE_VERSION;
 const STATIC_ASSETS = [
-  '/realestate84/',
-  '/realestate84/index.html',
-  '/realestate84/manifest.json'
+  '/realestate84-spilt/',
+  '/realestate84-spilt/index.html',
+  '/realestate84-spilt/manifest.json'
 ];
 
 // 설치: 즉시 새 버전으로 활성화
