@@ -1048,7 +1048,7 @@ function exitSearchMode() {
 function runSearch(keyword) {
   searchKeyword = (keyword || '').trim().toLowerCase();
   if(!searchKeyword) { exitSearchMode(); return; }
-  if(searchLoading) return; // 진행 중인 요청이 있으면 대기 — 완료 후 최신 searchKeyword로 재실행됨
+  if(searchLoading) return;
   listMode = 'search';
 
   // 전체 로드 완료된 경우 → Firestore 재조회 없이 메모리에서 바로 검색
@@ -1060,26 +1060,19 @@ function runSearch(keyword) {
   }
 
   // 아직 페이지네이션 진행 중 → Firestore 전체 조회
-  var requestedKeyword = searchKeyword; // 클로저로 캡처: 응답 도착 시 최신 키워드와 비교
   searchLoading = true;
   showLoading('검색 중...');
   db.collection(getPropertiesCollection()).orderBy('createdAt','desc').get()
     .then(function(snap) {
-      searchLoading = false;
-      if(requestedKeyword !== searchKeyword) {
-        // 응답 도착 사이에 키워드가 바뀜 → 이 결과는 버리고 최신 키워드로 재실행
-        runSearch(searchKeyword);
-        return;
-      }
       var allProps = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       searchResults = allProps.filter(function(p){ return matchesSearch(p, searchKeyword); });
+      searchLoading = false;
       if(_fieldSettingsReady) renderTable();
     })
     .catch(function(e) {
       console.error(e);
-      searchLoading = false;
-      if(requestedKeyword !== searchKeyword) { runSearch(searchKeyword); return; }
       searchResults = [];
+      searchLoading = false;
       if(_fieldSettingsReady) renderTable();
     });
 }
@@ -2718,41 +2711,41 @@ function renderTable() {
         switch(c.key) {
           case 'propNo':    return '<td style="font-weight:700;color:var(--accent)">'+(p.propNo||'-')+'</td>';
           case 'photo':     return '<td style="width:32px;min-width:32px;max-width:32px;">'+thumb+'</td>';
-          case 'georae':    return '<td><span class="tag tag-'+(p.georae||'')+'">'+escapeHtml(p.georae||'-')+'</span></td>';
-          case 'type':      return '<td><span class="tag tag-'+(p.type||'')+'">'+escapeHtml(p.type||'-')+'</span></td>';
-          case 'address':   return '<td class="address-text">'+escapeHtml(p.address||'-')+'</td>';
+          case 'georae':    return '<td><span class="tag tag-'+(p.georae||'')+'">'+(p.georae||'-')+'</span></td>';
+          case 'type':      return '<td><span class="tag tag-'+(p.type||'')+'">'+(p.type||'-')+'</span></td>';
+          case 'address':   return '<td class="address-text">'+(p.address||'-')+'</td>';
           case 'price':     return '<td style="font-weight:600;text-align:right">'+(p.price!==undefined&&p.price!==null&&p.price!==''?formatPriceComma(p.price):'-')+'</td>';
           case 'monthlyRent': return '<td style="font-weight:600;text-align:right">'+(p.georae==='월세'&&(p.monthlyRent!==undefined&&p.monthlyRent!==null&&p.monthlyRent!=='')?formatMonthlyRentComma(p.monthlyRent):'-')+'</td>';
-          case 'landArea':  return '<td class="muted">'+(p.landArea?escapeHtml(String(p.landArea))+(getFieldSuffix('landArea')?' '+getFieldSuffix('landArea'):''):'-')+'</td>';
-          case 'totalArea': return '<td class="muted">'+(p.totalArea?escapeHtml(String(p.totalArea))+(getFieldSuffix('totalArea')?' '+getFieldSuffix('totalArea'):''):'-')+'</td>';
-          case 'supplyArea':   return '<td class="muted">'+(p.supplyArea?escapeHtml(String(p.supplyArea))+(getFieldSuffix('supplyArea')?' '+getFieldSuffix('supplyArea'):''):'-')+'</td>';
-          case 'exclusiveArea':return '<td class="muted">'+((p.exclusiveArea||p.rentArea)?escapeHtml(String(p.exclusiveArea||p.rentArea))+(getFieldSuffix('exclusiveArea')?' '+getFieldSuffix('exclusiveArea'):''):'-')+'</td>';
-          case 'tempArea':  return '<td class="muted">'+(p.tempArea?escapeHtml(String(p.tempArea))+(getFieldSuffix('tempArea')?' '+getFieldSuffix('tempArea'):''):'-')+'</td>';
-          case 'roadArea':  return '<td class="muted">'+(p.roadArea?escapeHtml(String(p.roadArea))+(getFieldSuffix('roadArea')?' '+getFieldSuffix('roadArea'):''):'-')+'</td>';
-          case 'electric':  return '<td class="muted">'+(p.electric?escapeHtml(String(p.electric))+(getFieldSuffix('electric')||'kw'):'-')+'</td>';
-          case 'height':    return '<td class="muted">'+(p.height?escapeHtml(String(p.height))+(getFieldSuffix('height')||'m'):'-')+'</td>';
-          case 'useZone':   return '<td class="muted">'+(p.useZone?(escapeHtml(p.useZone)+(getFieldSuffix('useZone')?' '+getFieldSuffix('useZone'):'')):'-')+'</td>';
-          case 'jimok':     return '<td class="muted">'+(p.jimok?(escapeHtml(p.jimok)+(getFieldSuffix('jimok')?' '+getFieldSuffix('jimok'):'')):'-')+'</td>';
-          case 'buildingUse':  return '<td class="muted">'+(p.buildingUse?(escapeHtml(p.buildingUse)+(getFieldSuffix('buildingUse')?' '+getFieldSuffix('buildingUse'):'')):'-')+'</td>';
-          case 'approvalDate': return '<td class="muted" style="font-size:11px">'+escapeHtml(p.approvalDate||'-')+'</td>';
-          case 'floors':    return '<td class="muted">'+(p.floors?(escapeHtml(p.floors)+(getFieldSuffix('floors')?' '+getFieldSuffix('floors'):'')):'-')+'</td>';
-          case 'hoist':     return '<td class="muted">'+(p.hoist?(escapeHtml(p.hoist)+(getFieldSuffix('hoist')?' '+getFieldSuffix('hoist'):'')):'-')+'</td>';
-          case 'direction': return '<td class="muted">'+(p.direction?(escapeHtml(p.direction)+(getFieldSuffix('direction')?' '+getFieldSuffix('direction'):'')):'-')+'</td>';
-          case 'parking':   return '<td class="muted">'+(p.parking?(escapeHtml(p.parking)+(getFieldSuffix('parking')?' '+getFieldSuffix('parking'):'')):'-')+'</td>';
-          case 'toilet':    return '<td class="muted">'+(p.toilet?(escapeHtml(p.toilet)+(getFieldSuffix('toilet')?' '+getFieldSuffix('toilet'):'')):'-')+'</td>';
-          case 'elevator':  return '<td class="muted">'+(p.elevator?(escapeHtml(p.elevator)+(getFieldSuffix('elevator')?' '+getFieldSuffix('elevator'):'')):'-')+'</td>';
-          case 'factoryReg':return '<td class="muted">'+(p.factoryReg?(escapeHtml(p.factoryReg)+(getFieldSuffix('factoryReg')?' '+getFieldSuffix('factoryReg'):'')):'-')+'</td>';
-          case 'access':    return '<td class="muted">'+(p.access?(escapeHtml(p.access)+(getFieldSuffix('access')?' '+getFieldSuffix('access'):'')):'-')+'</td>';
-          case 'ownerName': return '<td class="muted">'+escapeHtml(p.ownerName||'-')+'</td>';
-          case 'createdDate': return '<td class="muted" style="font-size:11px">'+escapeHtml(p.createdDate||'-')+'</td>';
-          case 'updatedDate': return '<td class="muted" style="font-size:11px">'+escapeHtml(p.updatedDate||'-')+'</td>';
+          case 'landArea':  return '<td class="muted">'+(p.landArea?p.landArea+(getFieldSuffix('landArea')?' '+getFieldSuffix('landArea'):''):'-')+'</td>';
+          case 'totalArea': return '<td class="muted">'+(p.totalArea?p.totalArea+(getFieldSuffix('totalArea')?' '+getFieldSuffix('totalArea'):''):'-')+'</td>';
+          case 'supplyArea':   return '<td class="muted">'+(p.supplyArea?p.supplyArea+(getFieldSuffix('supplyArea')?' '+getFieldSuffix('supplyArea'):''):'-')+'</td>';
+          case 'exclusiveArea':return '<td class="muted">'+((p.exclusiveArea||p.rentArea)?(p.exclusiveArea||p.rentArea)+(getFieldSuffix('exclusiveArea')?' '+getFieldSuffix('exclusiveArea'):''):'-')+'</td>';
+          case 'tempArea':  return '<td class="muted">'+(p.tempArea?p.tempArea+(getFieldSuffix('tempArea')?' '+getFieldSuffix('tempArea'):''):'-')+'</td>';
+          case 'roadArea':  return '<td class="muted">'+(p.roadArea?p.roadArea+(getFieldSuffix('roadArea')?' '+getFieldSuffix('roadArea'):''):'-')+'</td>';
+          case 'electric':  return '<td class="muted">'+(p.electric?p.electric+(getFieldSuffix('electric')||'kw'):'-')+'</td>';
+          case 'height':    return '<td class="muted">'+(p.height?p.height+(getFieldSuffix('height')||'m'):'-')+'</td>';
+          case 'useZone':   return '<td class="muted">'+(p.useZone?(p.useZone+(getFieldSuffix('useZone')?' '+getFieldSuffix('useZone'):'')):'-')+'</td>';
+          case 'jimok':     return '<td class="muted">'+(p.jimok?(p.jimok+(getFieldSuffix('jimok')?' '+getFieldSuffix('jimok'):'')):'-')+'</td>';
+          case 'buildingUse':  return '<td class="muted">'+(p.buildingUse?(p.buildingUse+(getFieldSuffix('buildingUse')?' '+getFieldSuffix('buildingUse'):'')):'-')+'</td>';
+          case 'approvalDate': return '<td class="muted" style="font-size:11px">'+(p.approvalDate||'-')+'</td>';
+          case 'floors':    return '<td class="muted">'+(p.floors?(p.floors+(getFieldSuffix('floors')?' '+getFieldSuffix('floors'):'')):'-')+'</td>';
+          case 'hoist':     return '<td class="muted">'+(p.hoist?(p.hoist+(getFieldSuffix('hoist')?' '+getFieldSuffix('hoist'):'')):'-')+'</td>';
+          case 'direction': return '<td class="muted">'+(p.direction?(p.direction+(getFieldSuffix('direction')?' '+getFieldSuffix('direction'):'')):'-')+'</td>';
+          case 'parking':   return '<td class="muted">'+(p.parking?(p.parking+(getFieldSuffix('parking')?' '+getFieldSuffix('parking'):'')):'-')+'</td>';
+          case 'toilet':    return '<td class="muted">'+(p.toilet?(p.toilet+(getFieldSuffix('toilet')?' '+getFieldSuffix('toilet'):'')):'-')+'</td>';
+          case 'elevator':  return '<td class="muted">'+(p.elevator?(p.elevator+(getFieldSuffix('elevator')?' '+getFieldSuffix('elevator'):'')):'-')+'</td>';
+          case 'factoryReg':return '<td class="muted">'+(p.factoryReg?(p.factoryReg+(getFieldSuffix('factoryReg')?' '+getFieldSuffix('factoryReg'):'')):'-')+'</td>';
+          case 'access':    return '<td class="muted">'+(p.access?(p.access+(getFieldSuffix('access')?' '+getFieldSuffix('access'):'')):'-')+'</td>';
+          case 'ownerName': return '<td class="muted">'+(p.ownerName||'-')+'</td>';
+          case 'createdDate': return '<td class="muted" style="font-size:11px">'+(p.createdDate||'-')+'</td>';
+          case 'updatedDate': return '<td class="muted" style="font-size:11px">'+(p.updatedDate||'-')+'</td>';
           case 'adStatus':  return '<td style="width:30px;min-width:30px;max-width:30px;text-align:center"><span class="ad-light '+getAdLightClass(p.adStart, p.adEnd, p.adReady)+'"></span></td>';
           case 'departure': return '<td style="width:30px;min-width:30px;max-width:30px;text-align:center"><span class="dep-light '+(p.departure===false?'':'on')+'"></span></td>';
           default: {
             var sv = p[c.key]||''; var ss = getSuffixCached(c.key);
             var rightAlignKeys = ['pricePerPyeong','premium','officialBuildingPrice','officialLandPrice','maintenance','cleaningFee'];
             var rightAlign = rightAlignKeys.indexOf(c.key)!==-1;
-            return '<td class="muted"'+(rightAlign?' style="text-align:right"':'')+'>'+(sv ? escapeHtml(String(sv))+(ss?' '+ss:'') : '-')+'</td>';
+            return '<td class="muted"'+(rightAlign?' style="text-align:right"':'')+'>'+(sv ? sv+(ss?' '+ss:'') : '-')+'</td>';
           }
         }
       }).join('');
@@ -2962,8 +2955,6 @@ function saveMemoInline(id) {
   if(statusEl) statusEl.textContent = '저장 중...';
   db.collection(getPropertiesCollection()).doc(id).update({ memo: newMemo }).then(function(){
     if(p) p.memo = newMemo;
-    var sr = searchResults.find(function(x){ return x.id === id; });
-    if(sr) sr.memo = newMemo;
     if(statusEl) { statusEl.textContent = '✅ 저장됨'; setTimeout(function(){ statusEl.textContent=''; }, 2000); }
   }).catch(function(e){
     if(statusEl) statusEl.textContent = '❌ 저장 실패';
@@ -4638,8 +4629,6 @@ function toggleDeparture(id) {
     var newVal = (p.departure === false) ? true : false;
     db.collection(getPropertiesCollection()).doc(id).update({ departure: newVal }).then(function() {
       p.departure = newVal;
-      var sr = searchResults.find(function(x){ return x.id === id; });
-      if(sr) sr.departure = newVal;
       updateDepBtn(p);
       renderTable();
     });
@@ -4720,8 +4709,6 @@ function toggleAd(id) {
     var today = new Date().toISOString().split('T')[0];
     db.collection(getPropertiesCollection()).doc(id).update({ adEnd: today, adReady: false }).then(function() {
       p.adEnd = today; p.adReady = false;
-      var sr = searchResults.find(function(x){ return x.id === id; });
-      if(sr) { sr.adEnd = today; sr.adReady = false; }
       updateAdBtn(p);
       renderTable();
     });
@@ -4730,8 +4717,6 @@ function toggleAd(id) {
     var today = new Date().toISOString().split('T')[0];
     db.collection(getPropertiesCollection()).doc(id).update({ adStart: today, adEnd: '', adReady: false }).then(function() {
       p.adStart = today; p.adEnd = ''; p.adReady = false;
-      var sr = searchResults.find(function(x){ return x.id === id; });
-      if(sr) { sr.adStart = today; sr.adEnd = ''; sr.adReady = false; }
       updateAdBtn(p);
       renderTable();
     });
@@ -4739,8 +4724,6 @@ function toggleAd(id) {
     // ⚫ 꺼짐/종료/만료 → 🔵 광고준비
     db.collection(getPropertiesCollection()).doc(id).update({ adReady: true }).then(function() {
       p.adReady = true;
-      var sr = searchResults.find(function(x){ return x.id === id; });
-      if(sr) sr.adReady = true;
       updateAdBtn(p);
       renderTable();
     });
@@ -4846,18 +4829,6 @@ window.addEventListener('popstate', function(e) {
   if (bannerm && bannerm.classList.contains('active')) { closeBannerModal(); return; }
   var mam = document.getElementById('mapAllModal');
   if (mam && mam.classList.contains('active')) { closeMapAll(); return; }
-  var nbm = document.getElementById('noticeBoardModal');
-  if (nbm && nbm.classList.contains('active')) {
-    if (window._nbIsEditing && typeof nbConfirmDiscard === 'function') {
-      if (!nbConfirmDiscard()) {
-        window.history.pushState({ modal: true }, '', window.location.href);
-        return;
-      }
-      window._nbIsEditing = false;
-    }
-    closeNoticeBoard();
-    return;
-  }
 });
 
 // ── textarea 높이 기억 ────────────────────
