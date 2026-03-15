@@ -141,9 +141,9 @@
 <!-- ══ 좌측: 매물 리스트 패널 ══════════════════════════ -->
 <div class="list-panel">
 
-<!-- 패널 닫혔을 때 보이는 열기 탭 -->
-<div id="customerPanelTab" onclick="toggleCustomerPanel()" title="고객문의 열기"
-  style="display:none;position:absolute;right:0;top:50%;transform:translateY(-50%);z-index:10;
+<!-- 패널 닫혔을 때 보이는 열기/닫기 탭 -->
+<div id="customerPanelTab" onclick="toggleCustomerPanel()" title="고객문의 열기/닫기"
+  style="display:flex;position:absolute;right:0;top:50%;transform:translateY(-50%);z-index:10;
          background:var(--surface);border:1px solid var(--border);border-left:none;
          border-radius:8px 0 0 8px;padding:12px 6px;cursor:pointer;
          writing-mode:vertical-rl;font-size:12px;font-weight:600;color:var(--accent);
@@ -216,12 +216,8 @@
 <!-- ══ 우측: 고객문의 패널 ══════════════════════════ -->
 <div class="customer-panel" id="customerPanel">
   <div class="customer-panel-header">
-    <div style="display:flex;gap:6px;align-items:center;">
-      <button id="customerPanelToggleBtn" onclick="toggleCustomerPanel()" title="패널 닫기"
-        style="background:none;border:1px solid var(--border);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:14px;color:var(--text-muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;">▶</button>
-      <button class="btn btn-primary btn-sm" onclick="openCustomerForm()">＋ 문의등록</button>
-    </div>
     <div style="font-size:14px;font-weight:700;color:var(--text);" id="customerPanelTitle">👥 고객문의</div>
+    <button class="btn btn-primary btn-sm" onclick="openCustomerForm()">＋ 문의등록</button>
   </div>
 
   <!-- ① 고객 상세 영역 (상단) -->
@@ -5672,28 +5668,30 @@ function closeSettings() {
 
 // ── 고객문의 패널 토글 ────────────────────
 function toggleCustomerPanel() {
-  var panel     = document.getElementById('customerPanel');
-  var tab       = document.getElementById('customerPanelTab');
-  var btn       = document.getElementById('customerPanelToggleBtn');
-  var listPanel = document.querySelector('.list-panel');
+  var panel       = document.getElementById('customerPanel');
+  var tab         = document.getElementById('customerPanelTab');
+  var listPanel   = document.querySelector('.list-panel');
   var splitLayout = document.querySelector('.split-layout');
   if(!panel) return;
   var isCollapsed = panel.classList.contains('collapsed');
   if(isCollapsed) {
     // 열기
     panel.classList.remove('collapsed');
-    if(listPanel)   listPanel.classList.remove('centered');
+    if(listPanel)   { listPanel.classList.remove('centered'); listPanel.style.width=''; listPanel.style.flex=''; }
     if(splitLayout) splitLayout.classList.remove('panel-closed');
-    if(tab) tab.style.display = 'none';
-    if(btn) btn.textContent = '▶';
+    if(tab) tab.innerHTML = '👥 고객문의 ▶';
     try { localStorage.setItem('customerPanelOpen','1'); } catch(e){}
   } else {
     // 닫기
     panel.classList.add('collapsed');
-    if(listPanel)   listPanel.classList.add('centered');
+    if(listPanel) {
+      listPanel.classList.add('centered');
+      var w = Math.min(1300, window.innerWidth);
+      listPanel.style.width = w + 'px';
+      listPanel.style.flex = '0 0 ' + w + 'px';
+    }
     if(splitLayout) splitLayout.classList.add('panel-closed');
-    if(tab) tab.style.display = 'flex';
-    if(btn) btn.textContent = '◀';
+    if(tab) tab.innerHTML = '👥 고객문의 ◀';
     try { localStorage.setItem('customerPanelOpen','0'); } catch(e){}
   }
 }
@@ -5705,14 +5703,17 @@ window.addEventListener('DOMContentLoaded', function(){
     if(saved === '0') {
       var panel       = document.getElementById('customerPanel');
       var tab         = document.getElementById('customerPanelTab');
-      var btn         = document.getElementById('customerPanelToggleBtn');
       var listPanel   = document.querySelector('.list-panel');
       var splitLayout = document.querySelector('.split-layout');
       if(panel)       panel.classList.add('collapsed');
-      if(listPanel)   listPanel.classList.add('centered');
+      if(listPanel) {
+        listPanel.classList.add('centered');
+        var w = Math.min(1300, window.innerWidth);
+        listPanel.style.width = w + 'px';
+        listPanel.style.flex = '0 0 ' + w + 'px';
+      }
       if(splitLayout) splitLayout.classList.add('panel-closed');
-      if(tab)         tab.style.display = 'flex';
-      if(btn)         btn.textContent = '◀';
+      if(tab)         tab.innerHTML = '👥 고객문의 ◀';
     }
   } catch(e){}
 });
