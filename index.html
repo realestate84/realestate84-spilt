@@ -76,7 +76,7 @@
     <button type="button" id="sectorBtnResidential" class="btn btn-outline btn-sm sector-btn" onclick="switchSector('residential')" style="border-radius:6px;font-size:12px;">주거용</button>
   </div>
   <div class="header-actions">
-    <button class="btn btn-outline" onclick="openNoticeBoard()">📋 게시글</button>
+    <button class="btn btn-outline" onclick="openNoticeBoard()">📋 게시판</button>
     <button class="btn btn-outline" onclick="openCustomers()">👥 고객문의</button>
     <button class="btn btn-outline" onclick="openTodoModal()">📝 To-do</button>
     <button class="btn btn-outline" onclick="openBannerModal()">🏷 현수막</button>
@@ -118,7 +118,7 @@
   </div>
   <button class="btn btn-primary" onclick="openAddModal();closeMobileMenu()">＋ 매물 등록</button>
   <button class="btn btn-outline" onclick="openAiInputModal();closeMobileMenu()" style="background:linear-gradient(135deg,#6c47f5,#3a7ef6);color:#fff;border:none;">✨ AI 자동입력</button>
-  <button class="btn btn-outline" onclick="openNoticeBoard();closeMobileMenu()">📋 게시글</button>
+  <button class="btn btn-outline" onclick="openNoticeBoard();closeMobileMenu()">📋 게시판</button>
   <button class="btn btn-outline" onclick="openCustomers();closeMobileMenu()">👥 고객문의</button>
   <button class="btn btn-outline" onclick="openTodoModal();closeMobileMenu()">📝 To-do</button>
   <button class="btn btn-outline" onclick="openBannerModal();closeMobileMenu()">🏷 현수막</button>
@@ -799,7 +799,7 @@
 <div class="modal-overlay" id="noticeBoardModal" onclick="if(event.target===this)noticeBoardOverlayClose()">
   <div class="modal" style="max-width:680px;height:85vh;">
     <div class="modal-header">
-      <div class="modal-title">📋 게시글</div>
+      <div class="modal-title">📋 게시판</div>
       <button class="modal-close" onclick="noticeBoardXClose()">×</button>
     </div>
     <div class="modal-body" id="noticeBoardBody" style="padding:0;display:flex;flex-direction:column;height:100%;min-height:0;">
@@ -809,7 +809,7 @@
       </div>
       <!-- 작성 버튼 (관리자) -->
       <div id="noticeBoardWriteBar" style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
-        <button class="btn btn-primary btn-sm" onclick="openNoticeBoardWrite()">✏️ 게시글 작성</button>
+        <button class="btn btn-primary btn-sm" onclick="openNoticeBoardWrite()">✏️ 글쓰기</button>
       </div>
       <!-- 작성/수정 폼 (숨김) -->
       <div id="noticeBoardForm" style="display:none;flex-direction:column;flex:1;padding:20px;gap:12px;overflow-y:auto;">
@@ -823,13 +823,21 @@
           <textarea id="nbFormContent" class="form-input" placeholder="공지 내용을 입력하세요..." style="flex:1;min-height:200px;resize:none;font-family:'Noto Sans KR',sans-serif;line-height:1.7;"></textarea>
         </div>
         <div>
-          <label style="font-size:12px;color:var(--text-muted);font-weight:500;display:block;margin-bottom:4px;">첨부파일</label>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <label style="font-size:12px;color:var(--text-muted);font-weight:500;display:block;margin-bottom:6px;">첨부파일</label>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
             <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;">
               📎 파일 선택
-              <input type="file" id="nbFormFiles" multiple style="display:none;" onchange="nbRenderFileList()">
+              <input type="file" id="nbFormFiles" multiple style="display:none;" onchange="nbAddFiles(this.files)">
             </label>
             <span style="font-size:12px;color:var(--text-muted);">여러 파일 선택 가능</span>
+          </div>
+          <div id="nbDropZone"
+            style="border:2px dashed var(--border);border-radius:10px;padding:18px 12px;text-align:center;font-size:13px;color:var(--text-muted);cursor:pointer;transition:border-color 0.2s,background 0.2s;"
+            ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='rgba(58,126,246,0.05)';"
+            ondragleave="this.style.borderColor='var(--border)';this.style.background='';"
+            ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='';nbAddFiles(event.dataTransfer.files);"
+            onclick="document.getElementById('nbFormFiles').click()">
+            🗂 여기에 파일을 드래그하거나 클릭해서 추가하세요
           </div>
           <div id="nbFormFileList" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;"></div>
         </div>
@@ -8454,18 +8462,39 @@ window.toggleDetailAreaUnit = function(unit) {
   });
 };
 
+// 첨부파일 누적 저장소
+window._nbPendingFiles = [];
+
+// 파일 추가 (누적, 중복 이름 제거)
+window.nbAddFiles = function(fileList) {
+  if(!fileList) return;
+  Array.from(fileList).forEach(function(file) {
+    var exists = window._nbPendingFiles.some(function(f){ return f.name === file.name && f.size === file.size; });
+    if(!exists) window._nbPendingFiles.push(file);
+  });
+  nbRenderFileList();
+};
+
 // 첨부파일 목록 렌더링
 window.nbRenderFileList = function() {
-  var input = document.getElementById('nbFormFiles');
   var listEl = document.getElementById('nbFormFileList');
+  if(!listEl) return;
   listEl.innerHTML = '';
-  if(!input || !input.files) return;
-  Array.from(input.files).forEach(function(file) {
+  window._nbPendingFiles.forEach(function(file, idx) {
     var tag = document.createElement('div');
     tag.style.cssText = 'display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;';
-    tag.innerHTML = '📄 ' + file.name + ' <span style="color:var(--text-muted);font-size:11px;">(' + (file.size > 1024*1024 ? (file.size/1024/1024).toFixed(1)+'MB' : Math.round(file.size/1024)+'KB') + ')</span>';
+    tag.innerHTML =
+      '📄 ' + file.name +
+      ' <span style="color:var(--text-muted);font-size:11px;">(' + (file.size > 1024*1024 ? (file.size/1024/1024).toFixed(1)+'MB' : Math.round(file.size/1024)+'KB') + ')</span>' +
+      '<button onclick="nbRemovePendingFile('+idx+')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0 2px;margin-left:2px;" title="제거">✕</button>';
     listEl.appendChild(tag);
   });
+};
+
+// 개별 파일 제거
+window.nbRemovePendingFile = function(idx) {
+  window._nbPendingFiles.splice(idx, 1);
+  nbRenderFileList();
 };
 
 // 작성 폼 열기
@@ -8475,6 +8504,7 @@ window.openNoticeBoardWrite = function() {
   document.getElementById('nbFormContent').value = '';
   document.getElementById('nbFormFiles').value = '';
   document.getElementById('nbFormFileList').innerHTML = '';
+  window._nbPendingFiles = [];
   _nbOrigTitle = '';
   _nbOrigContent = '';
   _nbIsEditing = true;
@@ -8503,6 +8533,7 @@ window.editNoticeBoardPost = function(id) {
     document.getElementById('nbFormContent').value = d.content || '';
     document.getElementById('nbFormFiles').value = '';
     document.getElementById('nbFormFileList').innerHTML = '';
+    window._nbPendingFiles = [];
     _nbOrigTitle = d.title || '';
     _nbOrigContent = d.content || '';
     _nbIsEditing = true;
@@ -8525,7 +8556,7 @@ window.saveNoticeBoardPost = function() {
   if(!db) return;
   var u = firebase.auth().currentUser;
   var filesInput = document.getElementById('nbFormFiles');
-  var files = filesInput && filesInput.files ? Array.from(filesInput.files) : [];
+  var files = (window._nbPendingFiles && window._nbPendingFiles.length) ? window._nbPendingFiles : (filesInput && filesInput.files ? Array.from(filesInput.files) : []);
 
   var saveBtn = document.querySelector('#noticeBoardForm .btn-primary');
   if(saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
