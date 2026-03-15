@@ -148,7 +148,7 @@
          border-radius:8px 0 0 8px;padding:12px 6px;cursor:pointer;
          writing-mode:vertical-rl;font-size:12px;font-weight:600;color:var(--accent);
          box-shadow:-2px 0 8px rgba(0,0,0,0.06);letter-spacing:0.05em;">
-  👥 고객문의 ▶
+  👥 고객문의 ◀
 </div>
 <div class="container">
   <div class="filter-bar">
@@ -5679,7 +5679,7 @@ function toggleCustomerPanel() {
     panel.classList.remove('collapsed');
     if(listPanel)   { listPanel.classList.remove('centered'); listPanel.style.width=''; listPanel.style.flex=''; }
     if(splitLayout) splitLayout.classList.remove('panel-closed');
-    if(tab) tab.innerHTML = '👥 고객문의 ◀';
+    if(tab) tab.innerHTML = '👥 고객문의 ▶';
     try { localStorage.setItem('customerPanelOpen','1'); } catch(e){}
   } else {
     // 닫기
@@ -5691,7 +5691,7 @@ function toggleCustomerPanel() {
       listPanel.style.flex = '0 0 ' + w + 'px';
     }
     if(splitLayout) splitLayout.classList.add('panel-closed');
-    if(tab) tab.innerHTML = '👥 고객문의 ▶';
+    if(tab) tab.innerHTML = '👥 고객문의 ◀';
     try { localStorage.setItem('customerPanelOpen','0'); } catch(e){}
   }
 }
@@ -5713,7 +5713,7 @@ window.addEventListener('DOMContentLoaded', function(){
         listPanel.style.flex = '0 0 ' + w + 'px';
       }
       if(splitLayout) splitLayout.classList.add('panel-closed');
-      if(tab)         tab.innerHTML = '👥 고객문의 ▶';
+      if(tab)         tab.innerHTML = '👥 고객문의 ◀';
     }
   } catch(e){}
 });
