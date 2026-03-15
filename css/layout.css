@@ -169,24 +169,7 @@ th{position:relative;}
   flex-shrink:0;
   background:var(--surface);
 }
-/* 고객 목록 영역 (상단 45%) */
-.customer-panel-body{
-  display:flex;
-  flex-direction:column;
-  padding:10px 12px 6px;
-  flex:0 0 auto;
-  max-height:45%;
-  min-height:160px;
-  overflow:hidden;
-  border-bottom:1px solid var(--border);
-}
-.customer-panel-body .table-wrap{
-  flex:1;
-  min-height:0;
-  overflow-y:auto;
-  border-radius:8px;
-}
-/* 고객 상세 영역 (하단 나머지) */
+/* 고객 상세 영역 (상단, 남은 공간 차지) */
 .customer-detail-area{
   flex:1;
   min-height:0;
@@ -194,11 +177,23 @@ th{position:relative;}
   display:flex;
   flex-direction:column;
   overflow:hidden;
+  border-bottom:1px solid var(--border);
 }
 .customer-detail-area #customerDetail{
   flex:1;
   min-height:0;
   overflow:auto;
+}
+
+/* 검색+리스트 영역 (하단 고정) */
+.customer-panel-body{
+  display:flex;
+  flex-direction:column;
+  padding:10px 12px 6px;
+  flex:0 0 auto;
+  height:40%;
+  min-height:180px;
+  overflow:hidden;
 }
 
 /* ── 오른쪽: 매물리스트 패널 ── */
