@@ -218,9 +218,15 @@ th{position:relative;}
 .customer-panel.collapsed{
   width:0 !important;
   min-width:0 !important;
-  overflow:hidden;
+  max-width:0 !important;
+  padding:0 !important;
+  overflow:hidden !important;
   opacity:0;
-  border-right:none;
+  border-right:none !important;
+  flex-shrink:1 !important;
+}
+.customer-panel.collapsed * {
+  visibility:hidden;
 }
 
 /* 필터바: split 레이아웃 안에서 sticky top 재조정 */
