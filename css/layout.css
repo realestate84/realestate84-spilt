@@ -152,7 +152,7 @@ th{position:relative;}
 
 /* ── 왼쪽: 고객문의 패널 ── */
 .customer-panel{
-  width:380px;
+  width:570px;
   flex-shrink:0;
   display:flex;
   flex-direction:column;
