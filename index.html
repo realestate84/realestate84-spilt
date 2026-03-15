@@ -2229,17 +2229,21 @@ function switchSector(sector) {
 }
 
 function saveNew(data, callback) {
-  // propNo를 메모리(properties)가 아닌 Firestore 전체 기준 최대값으로 계산
-  // → 페이지네이션으로 미로드된 페이지에 더 큰 번호가 있어도 중복 방지
-  db.collection(getPropertiesCollection())
-    .orderBy('propNo', 'desc').limit(1).get()
+  // propNo 최대값 계산:
+  // 1) orderBy('propNo','desc') 금지 — 문자열/숫자 혼재 시 사전순 정렬되어 오작동
+  // 2) { source: 'server' } 필수 — 캐시 참조 시 방금 저장한 문서 누락으로 번호 중복 발생
+  var col = getPropertiesCollection();
+  db.collection(col).get({ source: 'server' })
     .then(function(snap) {
       if (!data.propNo) {
-        var maxNo = (!snap.empty && snap.docs[0].data().propNo)
-          ? (parseInt(snap.docs[0].data().propNo) || 0) : 0;
+        var maxNo = 0;
+        snap.forEach(function(d) {
+          var v = parseInt(d.data().propNo, 10) || 0;
+          if (v > maxNo) maxNo = v;
+        });
         data.propNo = maxNo + 1;
       }
-      return db.collection(getPropertiesCollection()).add(data);
+      return db.collection(col).add(data);
     })
     .then(function(ref) { callback(null, ref.id); })
     .catch(function(e) { callback(e); });
@@ -4955,12 +4959,15 @@ function uploadExcel(e){
     var now=new Date();
     var dateStr=now.toLocaleDateString('ko-KR');
     var timeStr=now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
-    // propNo 중복 방지: 메모리(properties)가 아닌 Firestore 전체 기준 최대값으로 시작번호 확정
-    db.collection(getPropertiesCollection())
-      .orderBy('propNo','desc').limit(1).get()
+    // propNo 중복 방지: 전체 스캔 + source:'server' 강제
+    // orderBy는 문자열/숫자 혼재 시 사전순 오작동, 캐시는 방금 추가한 문서 누락 → 둘 다 사용 금지
+    db.collection(getPropertiesCollection()).get({ source: 'server' })
       .then(function(snap){
-        var maxNo = (!snap.empty && snap.docs[0].data().propNo)
-          ? (parseInt(snap.docs[0].data().propNo) || 0) : 0;
+        var maxNo = 0;
+        snap.forEach(function(d) {
+          var v = parseInt(d.data().propNo, 10) || 0;
+          if (v > maxNo) maxNo = v;
+        });
         var success=0, fail=0, idx=0;
         function next(){
           if(idx>=dataRows.length){ invalidatePropertyCache(); renderTable(); alert('업로드 완료!\n성공: '+success+'건 / 실패: '+fail+'건'); return; }
