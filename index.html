@@ -5688,8 +5688,8 @@ function toggleCustomerPanel() {
   }
 }
 
-// 패널 열림 상태 복원
-(function(){
+// 패널 열림 상태 복원 (DOM 준비 후)
+window.addEventListener('DOMContentLoaded', function(){
   try {
     var saved = localStorage.getItem('customerPanelOpen');
     if(saved === '0') {
@@ -5701,7 +5701,7 @@ function toggleCustomerPanel() {
       if(btn)   btn.textContent = '▶';
     }
   } catch(e){}
-})();
+});
 
 // ── 고객관리 ────────────────────────────────
 function openCustomers() {
