@@ -6048,6 +6048,20 @@ function toggleCustomerDone(id) {
   }).catch(function(e){ alert('오류: ' + (e && e.message ? e.message : e)); });
 }
 
+function setCustomerStage(id, stageIndex) {
+  if(!db) return;
+  var stages = ['신규 문의','조건 파악','매물 제안','현장 방문','협상','계약'];
+  // 현재 단계 클릭 시 이전 단계로 (토글), 아니면 해당 단계로 이동
+  var c = getCustomerById(id);
+  var cur = c ? (c.stage || 0) : 0;
+  var newStage = (stageIndex === cur && stageIndex > 0) ? stageIndex - 1 : stageIndex;
+  db.collection(getCustomersCollection()).doc(id).update({ stage: newStage }).then(function() {
+    if(c) c.stage = newStage;
+    showToast('📍 ' + stages[newStage] + ' 단계로 변경됐어요.');
+    openCustomerDetail(id, true);
+  }).catch(function(e){ alert('저장 실패: ' + e.message); });
+}
+
 function deleteCustomer(id) {
   var c = getCustomerById(id);
   if(!c) return;
@@ -6091,6 +6105,31 @@ function openCustomerDetail(id, keep, targetEl) {
           : '<button class="btn btn-outline btn-sm" onclick="toggleCustomerDone(\''+id+'\')" style="color:#22c55e;">✅ 완료처리</button>')+
         '<button class="btn btn-outline btn-sm" onclick="openCustomerForm(\''+id+'\')">수정</button>'+
         '<button class="btn btn-danger btn-sm" onclick="deleteCustomer(\''+id+'\')">삭제</button>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="detail-section"><div class="detail-section-title">진행 단계</div>'+
+      '<div id="customerStageWrap" style="display:flex;align-items:center;gap:0;flex-wrap:nowrap;overflow-x:auto;padding:6px 0;">'+
+        (function(){
+          var stages = ['신규 문의','조건 파악','매물 제안','현장 방문','협상','계약'];
+          var cur = c.stage || 0;
+          return stages.map(function(s, i){
+            var isActive = i <= cur;
+            var isCurrent = i === cur;
+            var arrow = i < stages.length-1
+              ? '<div style="width:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:'+(isActive?'var(--accent)':'var(--border)')+'">▶</div>'
+              : '';
+            return '<div onclick="setCustomerStage(\''+id+'\','+i+')" style="'+
+              'flex-shrink:0;cursor:pointer;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;'+
+              'transition:all 0.2s;user-select:none;'+
+              (isCurrent
+                ? 'background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(58,126,246,0.4);'
+                : isActive
+                  ? 'background:rgba(58,126,246,0.12);color:var(--accent);'
+                  : 'background:var(--bg);color:var(--text-muted);border:1px solid var(--border);')+
+              '">'+s+'</div>'+arrow;
+          }).join('');
+        })() +
       '</div>'+
     '</div>'+
 
