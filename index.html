@@ -5672,22 +5672,25 @@ function closeSettings() {
 
 // ── 고객문의 패널 토글 ────────────────────
 function toggleCustomerPanel() {
-  var panel = document.getElementById('customerPanel');
-  var tab   = document.getElementById('customerPanelTab');
-  var btn   = document.getElementById('customerPanelToggleBtn');
+  var panel    = document.getElementById('customerPanel');
+  var tab      = document.getElementById('customerPanelTab');
+  var btn      = document.getElementById('customerPanelToggleBtn');
+  var listPanel = document.querySelector('.list-panel');
   if(!panel) return;
   var isCollapsed = panel.classList.contains('collapsed');
   if(isCollapsed) {
     // 열기
     panel.classList.remove('collapsed');
+    if(listPanel) listPanel.classList.remove('centered');
     if(tab) tab.style.display = 'none';
-    if(btn) btn.textContent = '◀';
+    if(btn) btn.textContent = '▶';
     try { localStorage.setItem('customerPanelOpen','1'); } catch(e){}
   } else {
     // 닫기
     panel.classList.add('collapsed');
+    if(listPanel) listPanel.classList.add('centered');
     if(tab) tab.style.display = 'flex';
-    if(btn) btn.textContent = '▶';
+    if(btn) btn.textContent = '◀';
     try { localStorage.setItem('customerPanelOpen','0'); } catch(e){}
   }
 }
@@ -5697,12 +5700,14 @@ window.addEventListener('DOMContentLoaded', function(){
   try {
     var saved = localStorage.getItem('customerPanelOpen');
     if(saved === '0') {
-      var panel = document.getElementById('customerPanel');
-      var tab   = document.getElementById('customerPanelTab');
-      var btn   = document.getElementById('customerPanelToggleBtn');
-      if(panel) panel.classList.add('collapsed');
-      if(tab)   tab.style.display = 'flex';
-      if(btn)   btn.textContent = '▶';
+      var panel     = document.getElementById('customerPanel');
+      var tab       = document.getElementById('customerPanelTab');
+      var btn       = document.getElementById('customerPanelToggleBtn');
+      var listPanel = document.querySelector('.list-panel');
+      if(panel)     panel.classList.add('collapsed');
+      if(listPanel) listPanel.classList.add('centered');
+      if(tab)       tab.style.display = 'flex';
+      if(btn)       btn.textContent = '◀';
     }
   } catch(e){}
 });
