@@ -8464,7 +8464,6 @@ window.openNbFilePreview = function(url, name, storagePath) {
   document.getElementById('nbPreviewDownloadBtn').href = url;
   document.getElementById('nbPreviewDownloadBtn').download = name;
 
-  // 모든 패널 숨김
   ['nbPreviewLoading','nbPreviewExcel','nbPreviewWord','nbPreviewImage','nbPreviewIframe','nbPreviewUnsupported'].forEach(function(id){
     document.getElementById(id).style.display = 'none';
   });
@@ -8472,119 +8471,56 @@ window.openNbFilePreview = function(url, name, storagePath) {
   document.getElementById('nbPreviewSheetTabs').innerHTML = '';
 
   overlay.style.display = 'flex';
-  document.getElementById('nbPreviewLoading').style.display = 'flex';
+  var loadingEl = document.getElementById('nbPreviewLoading');
+  loadingEl.style.display = 'flex';
+  loadingEl.innerHTML = '⏳ Google Drive에서 변환 중... (10~20초 소요)';
 
-  // 이미지 — URL 직접 사용 (CORS 무관)
+  // 이미지 — 직접 표시
   if(['jpg','jpeg','png','gif','webp'].indexOf(ext) !== -1) {
-    document.getElementById('nbPreviewLoading').style.display = 'none';
+    loadingEl.style.display = 'none';
     document.getElementById('nbPreviewImage').style.display = 'flex';
     document.getElementById('nbPreviewImg').src = url;
     return;
   }
 
-  // PDF — iframe 직접 (CORS 무관)
+  // PDF — iframe 직접
   if(ext === 'pdf') {
-    document.getElementById('nbPreviewLoading').style.display = 'none';
-    var iframe = document.getElementById('nbPreviewIframe');
-    iframe.src = url;
-    iframe.style.display = 'block';
+    loadingEl.style.display = 'none';
+    var iframePdf = document.getElementById('nbPreviewIframe');
+    iframePdf.src = url;
+    iframePdf.style.display = 'block';
     return;
   }
 
-  // 엑셀·워드 — Firebase Storage SDK로 blob 취득 (CORS 가장 안전)
-  // storagePath가 있으면 SDK 사용, 없으면 XHR → Google Docs 순서로 폴백
-  function processBuffer(buf) {
-    if(['xlsx','xls','csv'].indexOf(ext) !== -1) {
-      if(typeof XLSX === 'undefined') { nbPreviewGoogleDocs(url, name); return; }
-      try {
-        var wb = XLSX.read(new Uint8Array(buf), { type:'array' });
-        window._nbPreviewWb = wb;
-        var sheetNames = wb.SheetNames;
-        var tabsEl = document.getElementById('nbPreviewSheetTabs');
-        if(sheetNames.length > 1) {
-          tabsEl.style.display = 'flex';
-          sheetNames.forEach(function(sn, i) {
-            var tab = document.createElement('button');
-            tab.textContent = sn;
-            tab.style.cssText = 'padding:6px 14px;font-size:12px;border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;cursor:pointer;background:'+(i===0?'var(--surface)':'var(--bg)')+';color:var(--text);font-family:inherit;';
-            tab.onclick = function() {
-              document.querySelectorAll('#nbPreviewSheetTabs button').forEach(function(b){ b.style.background='var(--bg)'; });
-              tab.style.background = 'var(--surface)';
-              nbRenderExcelSheet(wb, sn);
-            };
-            tabsEl.appendChild(tab);
-          });
-        }
-        document.getElementById('nbPreviewLoading').style.display = 'none';
-        document.getElementById('nbPreviewExcel').style.display = 'block';
-        nbRenderExcelSheet(wb, sheetNames[0]);
-      } catch(e) { nbPreviewGoogleDocs(url, name); }
-
-    } else if(ext === 'docx') {
-      if(typeof mammoth === 'undefined') { nbPreviewGoogleDocs(url, name); return; }
-      mammoth.convertToHtml({ arrayBuffer: buf }).then(function(result) {
-        document.getElementById('nbPreviewLoading').style.display = 'none';
-        var wordEl = document.getElementById('nbPreviewWord');
-        wordEl.style.display = 'block';
-        wordEl.innerHTML =
-          '<style>#nbPreviewWord table{border-collapse:collapse;width:100%;margin:12px 0}'+
-          '#nbPreviewWord td,#nbPreviewWord th{border:1px solid var(--border);padding:6px 10px;font-size:13px}'+
-          '#nbPreviewWord img{max-width:100%;height:auto}'+
-          '#nbPreviewWord h1,#nbPreviewWord h2,#nbPreviewWord h3{margin:16px 0 8px;color:var(--text)}'+
-          '#nbPreviewWord p{margin:6px 0}</style>'+
-          result.value;
-      }).catch(function() { nbPreviewGoogleDocs(url, name); });
-    }
+  // 엑셀·워드 — Firebase Function(drivePreview) 호출
+  var officeExts = ['xlsx','xls','csv','docx','doc'];
+  if(officeExts.indexOf(ext) !== -1) {
+    var fns = firebase.app().functions('asia-northeast3');
+    var drivePreview = fns.httpsCallable('drivePreview', { timeout: 70000 });
+    drivePreview({ fileUrl: url, fileName: name })
+      .then(function(result) {
+        loadingEl.style.display = 'none';
+        var iframe = document.getElementById('nbPreviewIframe');
+        iframe.src = result.data.embedUrl;
+        iframe.style.display = 'block';
+      })
+      .catch(function(err) {
+        console.error('drivePreview 오류:', err);
+        // 폴백: Office Online Viewer
+        loadingEl.style.display = 'none';
+        var iframe = document.getElementById('nbPreviewIframe');
+        iframe.src = 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(url);
+        iframe.style.display = 'block';
+      });
+    return;
   }
 
-  function tryXhr() {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.responseType = 'arraybuffer';
-    xhr.onload = function() {
-      if(xhr.status === 200 || xhr.status === 0) {
-        processBuffer(xhr.response);
-      } else { nbPreviewGoogleDocs(url, name); }
-    };
-    xhr.onerror = function() { nbPreviewGoogleDocs(url, name); };
-    xhr.send();
-  }
-
-  // 1순위: Firebase Storage SDK (같은 앱 내 → CORS 없음)
-  if(storagePath && firebase.storage) {
-    firebase.storage().ref(storagePath).getDownloadURL().then(function(freshUrl) {
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', freshUrl, true);
-      xhr.responseType = 'arraybuffer';
-      xhr.onload = function() {
-        if(xhr.status === 200 || xhr.status === 0) { processBuffer(xhr.response); }
-        else { nbPreviewGoogleDocs(url, name); }
-      };
-      xhr.onerror = function() { nbPreviewGoogleDocs(url, name); };
-      xhr.send();
-    }).catch(function() { tryXhr(); });
-  } else {
-    tryXhr();
-  }
-};
-
-// Google Docs Viewer 폴백
-window.nbPreviewGoogleDocs = function(url, name) {
-  document.getElementById('nbPreviewLoading').style.display = 'none';
-  var iframe = document.getElementById('nbPreviewIframe');
-  iframe.src = 'https://docs.google.com/viewer?embedded=true&url=' + encodeURIComponent(url);
-  iframe.style.display = 'block';
-};
-
-window.nbRenderExcelSheet = function(wb, sheetName) {
-  var ws = wb.Sheets[sheetName];
-  var html = XLSX.utils.sheet_to_html(ws, { editable: false });
-  var tableEl = document.getElementById('nbPreviewExcelTable');
-  tableEl.innerHTML =
-    '<style>#nbPreviewExcelTable table{border-collapse:collapse;font-size:13px;font-family:"Noto Sans KR",sans-serif;min-width:100%}' +
-    '#nbPreviewExcelTable td,#nbPreviewExcelTable th{border:1px solid var(--border);padding:5px 10px;white-space:nowrap;color:var(--text);background:var(--surface)}' +
-    '#nbPreviewExcelTable tr:first-child td,#nbPreviewExcelTable th{background:var(--bg);font-weight:600;position:sticky;top:0;z-index:1}</style>' +
-    html;
+  // 미지원
+  loadingEl.style.display = 'none';
+  var unsupEl = document.getElementById('nbPreviewUnsupported');
+  unsupEl.style.display = 'flex';
+  document.getElementById('nbPreviewUnsupportedDl').href = url;
+  document.getElementById('nbPreviewUnsupportedDl').download = name;
 };
 
 window.nbPreviewUnsupported = function(url, name) {
