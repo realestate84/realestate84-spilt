@@ -2222,11 +2222,20 @@ function switchSector(sector) {
 }
 
 function saveNew(data, callback) {
-  var maxNo = properties.length > 0 ? Math.max.apply(null, properties.map(function(p){return p.propNo||0;})) : 0;
-  if (!data.propNo) data.propNo = maxNo + 1;
-  db.collection(getPropertiesCollection()).add(data)
-    .then(function(ref){ callback(null, ref.id); })
-    .catch(function(e){ callback(e); });
+  // propNo를 메모리(properties)가 아닌 Firestore 전체 기준 최대값으로 계산
+  // → 페이지네이션으로 미로드된 페이지에 더 큰 번호가 있어도 중복 방지
+  db.collection(getPropertiesCollection())
+    .orderBy('propNo', 'desc').limit(1).get()
+    .then(function(snap) {
+      if (!data.propNo) {
+        var maxNo = (!snap.empty && snap.docs[0].data().propNo)
+          ? (parseInt(snap.docs[0].data().propNo) || 0) : 0;
+        data.propNo = maxNo + 1;
+      }
+      return db.collection(getPropertiesCollection()).add(data);
+    })
+    .then(function(ref) { callback(null, ref.id); })
+    .catch(function(e) { callback(e); });
 }
 
 function saveEdit(id, data, callback) {
@@ -2990,7 +2999,7 @@ function renderAdvSearchPanel() {
   var inner = document.getElementById('advSearchPanelInner');
   if(!inner) return;
   var isRes = (currentSector === SECTOR_RESIDENTIAL);
-  var common = ' oninput="renderTable()" style="font-size:12px;padding:7px 10px;"';
+  var common = ' oninput="onAdvSearchInput()" style="font-size:12px;padding:7px 10px;"';
   if(isRes) {
     inner.innerHTML =
       '<div><label style="font-size:11px;color:var(--text-muted);font-weight:500;display:block;margin-bottom:4px;">가격 최소 (만원)</label><input class="form-input" type="number" id="adv_priceMin" placeholder="예) 5000"' + common + '></div>' +
@@ -3017,6 +3026,15 @@ function renderAdvSearchPanel() {
       '<div><label style="font-size:11px;color:var(--text-muted);font-weight:500;display:block;margin-bottom:4px;">지목</label><input class="form-input" type="text" id="adv_jimok" placeholder="예) 대, 전, 답"' + common + '></div>' +
       '<div><label style="font-size:11px;color:var(--text-muted);font-weight:500;display:block;margin-bottom:4px;">지역 (주소 포함)</label><input class="form-input" type="text" id="adv_region" placeholder="예) 강화군, 서구"' + common + '></div>';
   }
+}
+
+// 상세검색 입력 디바운스 핸들러 (타이핑 멈춘 뒤 400ms 후 전체 매물 대상 필터 실행)
+var _advSearchTimer = null;
+function onAdvSearchInput() {
+  clearTimeout(_advSearchTimer);
+  _advSearchTimer = setTimeout(function() {
+    applyFilterWithFullLoad();
+  }, 400);
 }
 
 function toggleAdvSearch() {
@@ -3538,6 +3556,9 @@ function saveProperty(){
         invalidatePropertyCache();
         var p = properties.find(function(x){ return x.id === savedId; });
         if(p) { Object.assign(p, data); } else { properties.push(Object.assign({id:savedId}, data)); }
+        // 검색 모드일 때 searchResults도 동기화
+        var sr = searchResults.find(function(x){ return x.id === savedId; });
+        if(sr) { Object.assign(sr, data); }
         if(_fieldSettingsReady) renderTable();
         appendActivityLog('매물 수정', address);
         _formModalConfirmed = true;
@@ -4180,6 +4201,9 @@ function deleteProperty(id){
       if(err){ alert('사진/문서 삭제에 실패했습니다.\n매물 정보는 삭제되지 않았습니다.\n\n오류: '+(err.message||err)); return; }
       invalidatePropertyCache();
       properties = properties.filter(function(x){ return x.id !== id; });
+      if(listMode === 'search') {
+        searchResults = searchResults.filter(function(x){ return x.id !== id; });
+      }
       if(_fieldSettingsReady) renderTable();
       appendActivityLog('매물 삭제', addr);
       closeDetailModal();
@@ -4352,7 +4376,7 @@ function toggleDepFilter() {
     btn.style.borderColor = '';
     btn.style.fontWeight = '';
   }
-  renderTable();
+  applyFilterWithFullLoad();
 }
 
 function updateDepBtn(p) {
@@ -4902,31 +4926,40 @@ function uploadExcel(e){
     var now=new Date();
     var dateStr=now.toLocaleDateString('ko-KR');
     var timeStr=now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
-    var maxNo=properties.length>0?Math.max.apply(null,properties.map(function(p){return p.propNo||0;})):0;
-    var success=0, fail=0, idx=0;
-    function next(){
-      if(idx>=dataRows.length){ invalidatePropertyCache(); renderTable(); alert('업로드 완료!\n성공: '+success+'건 / 실패: '+fail+'건'); return; }
-      var cols=parseCSV(dataRows[idx]); idx++;
-      var addr=ci.address>=0?(cols[ci.address]||'').trim():'';
-      if(!addr){ fail++; next(); return; }
-      function g(k){ return (ci[k]>=0 && cols[ci[k]]!==undefined) ? String(cols[ci[k]]||'').trim() : ''; }
-      var data = {
-        photos: [], propNo: maxNo+success+1,
-        createdDate: dateStr, createdTime: timeStr, updatedDate: '', updatedTime: '',
-        createdAt: firebase.firestore.Timestamp.fromDate(new Date()),
-        updatedAt: firebase.firestore.Timestamp.fromDate(new Date())
-      };
-      excelFields.forEach(function(f){
-        if(f.key === 'propNo' || f.key === 'photos') return;
-        data[f.key] = g(f.key);
-      });
-      data.address = addr;
-      saveNew(data, function(err, newId){
-        if(err){ fail++; } else { properties.unshift(Object.assign({id:newId},data)); success++; }
+    // propNo 중복 방지: 메모리(properties)가 아닌 Firestore 전체 기준 최대값으로 시작번호 확정
+    db.collection(getPropertiesCollection())
+      .orderBy('propNo','desc').limit(1).get()
+      .then(function(snap){
+        var maxNo = (!snap.empty && snap.docs[0].data().propNo)
+          ? (parseInt(snap.docs[0].data().propNo) || 0) : 0;
+        var success=0, fail=0, idx=0;
+        function next(){
+          if(idx>=dataRows.length){ invalidatePropertyCache(); renderTable(); alert('업로드 완료!\n성공: '+success+'건 / 실패: '+fail+'건'); return; }
+          var cols=parseCSV(dataRows[idx]); idx++;
+          var addr=ci.address>=0?(cols[ci.address]||'').trim():'';
+          if(!addr){ fail++; next(); return; }
+          function g(k){ return (ci[k]>=0 && cols[ci[k]]!==undefined) ? String(cols[ci[k]]||'').trim() : ''; }
+          var data = {
+            photos: [], propNo: maxNo+success+1,
+            createdDate: dateStr, createdTime: timeStr, updatedDate: '', updatedTime: '',
+            createdAt: firebase.firestore.Timestamp.fromDate(new Date()),
+            updatedAt: firebase.firestore.Timestamp.fromDate(new Date())
+          };
+          excelFields.forEach(function(f){
+            if(f.key === 'propNo' || f.key === 'photos') return;
+            data[f.key] = g(f.key);
+          });
+          data.address = addr;
+          saveNew(data, function(err, newId){
+            if(err){ fail++; } else { properties.unshift(Object.assign({id:newId},data)); success++; }
+            next();
+          });
+        }
         next();
+      })
+      .catch(function(e){
+        alert('업로드 준비 중 오류가 발생했습니다: '+(e.message||e));
       });
-    }
-    next();
   };
   reader.readAsText(file, 'UTF-8');
 }
@@ -6617,19 +6650,29 @@ function toggleFilterGeoraePopup() {
   document.getElementById('filterGeoraeCheckboxes').innerHTML = html;
   popup.style.display = 'block';
 }
+// ── 전체 매물 로드 후 renderTable 실행하는 공통 헬퍼 ──────────────
+// 매물종류·거래유형·상세검색·출발가능 필터 모두 이 함수를 통해 실행
+function applyFilterWithFullLoad() {
+  if(!reachedEnd) {
+    loadAllThenDo(function() { renderTable(); });
+  } else {
+    renderTable();
+  }
+}
+
 function applyFilterType() {
   filterTypeChecked = {};
   var cbs = document.querySelectorAll('#filterTypeCheckboxes input[type=checkbox]');
   for(var i=0;i<cbs.length;i++) { if(cbs[i].checked) filterTypeChecked[cbs[i].getAttribute('data-type')] = true; }
   updateFilterTypeButtonText();
-  renderTable();
+  applyFilterWithFullLoad();
 }
 function applyFilterGeorae() {
   filterGeoraeChecked = {};
   var cbs = document.querySelectorAll('#filterGeoraeCheckboxes input[type=checkbox]');
   for(var i=0;i<cbs.length;i++) { if(cbs[i].checked) filterGeoraeChecked[cbs[i].getAttribute('data-georae')] = true; }
   updateFilterGeoraeButtonText();
-  renderTable();
+  applyFilterWithFullLoad();
 }
 document.addEventListener('click', function(e) {
   if(!e.target || !isInsidePopupOrTrigger(e.target)) closeAllFilterPopups();
