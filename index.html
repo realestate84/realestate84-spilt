@@ -844,7 +844,7 @@
 </div>
 
 <!-- 고객관리 모달 (패널 전환으로 사용 안 함 - 하위 호환용 유지) -->
-<div class="modal-overlay" id="customersModal" style="display:none!important;pointer-events:none;">
+<div class="modal-overlay" id="customersModal" onclick="if(event.target===this)closeCustomers()">
   <div class="modal" style="max-width:1150px;height:92vh;">
     <div class="modal-header">
       <div class="modal-title" id="customersModalTitle">👥 고객문의</div>
@@ -854,9 +854,32 @@
       </div>
     </div>
     <div class="modal-body" style="padding:16px;display:flex;gap:12px;overflow:hidden;min-height:0;">
-      <div class="customer-left" style="width:360px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;min-height:0;">
+      <div class="customer-left" style="width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;min-height:0;">
+        <textarea id="customerSearchModal" class="search-input"
+          placeholder="🔍 이름/연락처/메모 검색..."
+          oninput="renderCustomerListModal()"
+          style="height:15px;min-height:15px;max-height:80px;padding:6px 10px;font-size:12px;resize:vertical;"></textarea>
+        <div class="table-wrap" style="flex:1;min-height:0;">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:30%;">이름</th>
+                <th style="width:25%;">매물종류</th>
+                <th style="width:20%;">거래유형</th>
+                <th style="width:15%;">매물</th>
+              </tr>
+            </thead>
+            <tbody id="customerListBodyModal"></tbody>
+          </table>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);" id="customerListInfoModal"></div>
+        <div id="customerDoneSectionModal">
+          <button id="customerDoneToggleBtnModal" onclick="toggleCustomerDoneSectionModal()" style="width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--border);padding:8px 4px 4px;font-size:12px;color:var(--text-muted);cursor:pointer;display:none;">✅ 완료 <span id="customerDoneCountModal">0</span>건 ▾</button>
+          <div id="customerDoneListModal" style="display:none;"></div>
+        </div>
       </div>
       <div class="customer-right" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;min-height:0;">
+        <div id="customerDetailModal" style="flex:1;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px;"></div>
       </div>
     </div>
   </div>
@@ -2149,6 +2172,12 @@ function loadCustomers() {
     // 패널 방식: 항상 렌더링
     renderCustomerList();
     if(_currentCustomerId) openCustomerDetail(_currentCustomerId, true);
+    // 모바일 모달이 열려있으면 모달도 갱신
+    var modal = document.getElementById('customersModal');
+    if(modal && modal.classList.contains('active')) {
+      renderCustomerListModal();
+      if(_currentCustomerId) openCustomerDetailModal(_currentCustomerId, true);
+    }
   }, function(e){
     console.error(e);
     customers = [];
@@ -4762,7 +4791,6 @@ window.addEventListener('popstate', function(e) {
   if (fm && fm.classList.contains('active')) { closeFormModal(); return; }
   var cm = document.getElementById('customersModal');
   if (cm && cm.classList.contains('active')) { closeCustomers(); return; }
-  // 패널 방식이므로 customersModal은 항상 표시 - popstate에서 처리 불필요
   var sm = document.getElementById('settingsModal');
   if (sm && sm.classList.contains('active')) { forceCloseSettings(); return; }
   var stm = document.getElementById('statsModal');
@@ -5720,10 +5748,21 @@ window.addEventListener('DOMContentLoaded', function(){
 
 // ── 고객관리 ────────────────────────────────
 function openCustomers() {
-  // 패널이 닫혀 있으면 먼저 열기
+  var isMobile = window.innerWidth <= 1024;
+  if(isMobile) {
+    // 모바일 → 모달 방식
+    var titleEl = document.getElementById('customersModalTitle');
+    if(titleEl) titleEl.textContent = '👥 고객문의 (' + (currentSector === SECTOR_COMMERCIAL ? '상업용' : '주거용') + ')';
+    document.getElementById('customersModal').classList.add('active');
+    pushModalState();
+    _currentCustomerId = null;
+    renderCustomerEmptyModal();
+    renderCustomerListModal();
+    return;
+  }
+  // PC → 패널 방식
   var panel = document.getElementById('customerPanel');
   if(panel && panel.classList.contains('collapsed')) toggleCustomerPanel();
-  // 패널 타이틀 업데이트 + 검색 포커스
   var titleEl = document.getElementById('customerPanelTitle');
   if(titleEl) titleEl.textContent = '👥 고객문의 (' + (currentSector === SECTOR_COMMERCIAL ? '상업용' : '주거용') + ')';
   var searchEl = document.getElementById('customerSearch');
@@ -5735,8 +5774,6 @@ function openCustomers() {
   _currentCustomerId = null;
   renderCustomerEmpty();
   renderCustomerList();
-  // 패널이 화면에 있으므로 부드럽게 강조
-  var panel = document.getElementById('customerPanel');
   if(panel) {
     panel.style.transition = 'box-shadow 0.3s';
     panel.style.boxShadow = 'inset -3px 0 0 var(--accent)';
@@ -5745,12 +5782,80 @@ function openCustomers() {
 }
 
 function closeCustomers() {
-  // 패널 방식: 닫기 없음 (항상 표시), popstate 호환용으로 유지
   var modal = document.getElementById('customersModal');
-  if(modal) modal.classList.remove('active');
+  if(modal && modal.classList.contains('active')) {
+    if(_modalStatePushed) { if(window.history && window.history.back) window.history.back(); return; }
+    modal.classList.remove('active');
+  }
+  // DOM id 복원 (모달에서 패널로 돌아올 때)
+  var hidden = document.getElementById('customerDetail__hidden');
+  var modalEl = document.getElementById('customerDetail');
+  if(hidden) hidden.id = 'customerDetail';
+  if(modalEl && modalEl.id === 'customerDetail') modalEl.id = 'customerDetailModal';
 }
 
-function escapeHtml(s) {
+// ── 모바일 모달용 고객 렌더링 ─────────────────
+function renderCustomerEmptyModal() {
+  var el = document.getElementById('customerDetailModal');
+  if(!el) return;
+  el.innerHTML =
+    '<div style="padding:40px 10px;text-align:center;color:var(--text-muted);">'+
+      '<div style="font-size:28px;margin-bottom:10px;">👥</div>'+
+      '<div style="font-size:13px;">왼쪽 목록에서 고객을 선택하거나, 상단에서 고객을 등록하세요.</div>'+
+    '</div>';
+}
+
+function renderCustomerListModal() {
+  var body = document.getElementById('customerListBodyModal');
+  var info = document.getElementById('customerListInfoModal');
+  if(!body) return;
+  var q = (document.getElementById('customerSearchModal') ? document.getElementById('customerSearchModal').value.trim().toLowerCase() : '');
+  var allList = customers.slice();
+  if(q) allList = allList.filter(function(c){
+    var s = (c.name||'') + ' ' + (c.phone||'') + ' ' + (c.memo||'');
+    return s.toLowerCase().indexOf(q) !== -1;
+  });
+  var activeList = allList.filter(function(c){ return !c.done; });
+  var doneList   = allList.filter(function(c){ return  c.done; });
+  body.innerHTML = activeList.length === 0
+    ? '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">없습니다.</td></tr>'
+    : activeList.map(function(c){
+        var selected = (_currentCustomerId === c.id);
+        return '<tr onclick="openCustomerDetailModal(\''+c.id+'\')" style="cursor:pointer;'+(selected?'background:rgba(58,126,246,0.06);':'')+'">' +
+          '<td style="font-weight:600;">' + escapeHtml(c.name||'-') + '</td>'+
+          '<td class="muted">' + escapeHtml(c.custType||'-') + '</td>'+
+          '<td class="muted">' + escapeHtml(c.custGeorae||'-') + '</td>'+
+          '<td class="muted" style="text-align:center;">' + (c.shownProps||[]).length + '</td>'+
+        '</tr>';
+      }).join('');
+  if(info) info.textContent = '진행중 ' + activeList.length + '명 / 완료 ' + doneList.length + '명';
+  // 완료 섹션
+  var toggleBtn = document.getElementById('customerDoneToggleBtnModal');
+  var countEl   = document.getElementById('customerDoneCountModal');
+  if(toggleBtn) toggleBtn.style.display = doneList.length > 0 ? 'block' : 'none';
+  if(countEl)   countEl.textContent = doneList.length;
+}
+
+function openCustomerDetailModal(id, keep) {
+  _currentCustomerId = id;
+  renderCustomerListModal();
+  // 패널의 openCustomerDetail 재사용 - 단 대상 엘리먼트를 Modal로 교체
+  var origEl = document.getElementById('customerDetail');
+  var modalEl = document.getElementById('customerDetailModal');
+  if(!origEl || !modalEl) return;
+  // 잠시 customerDetail을 modalEl로 교체해서 기존 함수 활용
+  origEl.id = 'customerDetail__hidden';
+  modalEl.id = 'customerDetail';
+  openCustomerDetail(id, keep);
+  // 복원은 닫힐 때
+}
+
+var _toggleCustomerDoneModalOpen = false;
+function toggleCustomerDoneSectionModal() {
+  _toggleCustomerDoneModalOpen = !_toggleCustomerDoneModalOpen;
+  var wrap = document.getElementById('customerDoneListModal');
+  if(wrap) wrap.style.display = _toggleCustomerDoneModalOpen ? 'block' : 'none';
+}
   s = (s===undefined || s===null) ? '' : String(s);
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
