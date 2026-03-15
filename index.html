@@ -76,7 +76,7 @@
     <button type="button" id="sectorBtnResidential" class="btn btn-outline btn-sm sector-btn" onclick="switchSector('residential')" style="border-radius:6px;font-size:12px;">주거용</button>
   </div>
   <div class="header-actions">
-    <button class="btn btn-outline" onclick="openNoticeBoard()">📢 공지</button>
+    <button class="btn btn-outline" onclick="openNoticeBoard()">📋 게시글</button>
     <button class="btn btn-outline" onclick="openCustomers()">👥 고객문의</button>
     <button class="btn btn-outline" onclick="openTodoModal()">📝 To-do</button>
     <button class="btn btn-outline" onclick="openBannerModal()">🏷 현수막</button>
@@ -118,7 +118,7 @@
   </div>
   <button class="btn btn-primary" onclick="openAddModal();closeMobileMenu()">＋ 매물 등록</button>
   <button class="btn btn-outline" onclick="openAiInputModal();closeMobileMenu()" style="background:linear-gradient(135deg,#6c47f5,#3a7ef6);color:#fff;border:none;">✨ AI 자동입력</button>
-  <button class="btn btn-outline" onclick="openNoticeBoard();closeMobileMenu()">📢 공지</button>
+  <button class="btn btn-outline" onclick="openNoticeBoard();closeMobileMenu()">📋 게시글</button>
   <button class="btn btn-outline" onclick="openCustomers();closeMobileMenu()">👥 고객문의</button>
   <button class="btn btn-outline" onclick="openTodoModal();closeMobileMenu()">📝 To-do</button>
   <button class="btn btn-outline" onclick="openBannerModal();closeMobileMenu()">🏷 현수막</button>
@@ -799,7 +799,7 @@
 <div class="modal-overlay" id="noticeBoardModal" onclick="if(event.target===this)noticeBoardOverlayClose()">
   <div class="modal" style="max-width:680px;height:85vh;">
     <div class="modal-header">
-      <div class="modal-title">📢 공지사항</div>
+      <div class="modal-title">📋 게시글</div>
       <button class="modal-close" onclick="noticeBoardXClose()">×</button>
     </div>
     <div class="modal-body" id="noticeBoardBody" style="padding:0;display:flex;flex-direction:column;height:100%;min-height:0;">
@@ -809,7 +809,7 @@
       </div>
       <!-- 작성 버튼 (관리자) -->
       <div id="noticeBoardWriteBar" style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
-        <button class="btn btn-primary btn-sm" onclick="openNoticeBoardWrite()">✏️ 공지 작성</button>
+        <button class="btn btn-primary btn-sm" onclick="openNoticeBoardWrite()">✏️ 게시글 작성</button>
       </div>
       <!-- 작성/수정 폼 (숨김) -->
       <div id="noticeBoardForm" style="display:none;flex-direction:column;flex:1;padding:20px;gap:12px;overflow-y:auto;">
@@ -821,6 +821,17 @@
         <div style="flex:1;display:flex;flex-direction:column;">
           <label style="font-size:12px;color:var(--text-muted);font-weight:500;display:block;margin-bottom:4px;">내용</label>
           <textarea id="nbFormContent" class="form-input" placeholder="공지 내용을 입력하세요..." style="flex:1;min-height:200px;resize:none;font-family:'Noto Sans KR',sans-serif;line-height:1.7;"></textarea>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-muted);font-weight:500;display:block;margin-bottom:4px;">첨부파일</label>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0;">
+              📎 파일 선택
+              <input type="file" id="nbFormFiles" multiple style="display:none;" onchange="nbRenderFileList()">
+            </label>
+            <span style="font-size:12px;color:var(--text-muted);">여러 파일 선택 가능</span>
+          </div>
+          <div id="nbFormFileList" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;"></div>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
           <button class="btn btn-outline" onclick="closeNoticeBoardWrite()">취소</button>
@@ -836,6 +847,10 @@
           <div id="nbDetailTitle" style="font-size:18px;font-weight:700;margin-bottom:8px;"></div>
           <div id="nbDetailMeta" style="font-size:12px;color:var(--text-muted);margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);"></div>
           <div id="nbDetailContent" style="font-size:14px;line-height:1.8;white-space:pre-wrap;color:var(--text);"></div>
+          <div id="nbDetailAttachments" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:none;">
+            <div style="font-size:12px;color:var(--text-muted);font-weight:600;margin-bottom:8px;">📎 첨부파일</div>
+            <div id="nbDetailAttachmentList" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+          </div>
         </div>
         <div id="nbDetailActions" style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;"></div>
       </div>
@@ -8312,6 +8327,30 @@ window.openNoticeBoardDetail = function(id) {
     document.getElementById('nbDetailTitle').textContent = d.title || '(제목 없음)';
     document.getElementById('nbDetailMeta').textContent = (d.authorName||d.author||'관리자') + ' · ' + date;
     document.getElementById('nbDetailContent').innerHTML = nbRenderContent(d.content || '');
+
+    // 첨부파일 렌더링
+    var attachWrap = document.getElementById('nbDetailAttachments');
+    var attachList = document.getElementById('nbDetailAttachmentList');
+    var atts = d.attachments || [];
+    if(atts.length > 0) {
+      attachList.innerHTML = '';
+      atts.forEach(function(att, idx) {
+        var isOwner = d.author === _nbCurrentUser;
+        var item = document.createElement('div');
+        item.style.cssText = 'display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;';
+        item.innerHTML =
+          '<a href="'+att.url+'" target="_blank" download="'+att.name+'" style="color:var(--accent);text-decoration:none;display:flex;align-items:center;gap:6px;">'+
+          '📄 '+att.name+
+          '<span style="font-size:11px;color:var(--text-muted);">('+( att.size > 1024*1024 ? (att.size/1024/1024).toFixed(1)+'MB' : Math.round(att.size/1024)+'KB')+')</span>'+
+          '</a>'+
+          (isOwner ? '<button onclick="nbDeleteAttachment(\''+id+'\','+idx+')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0 2px;" title="첨부파일 삭제">✕</button>' : '');
+        attachList.appendChild(item);
+      });
+      attachWrap.style.display = '';
+    } else {
+      attachWrap.style.display = 'none';
+    }
+
     var actions = document.getElementById('nbDetailActions');
     if(d.author === _nbCurrentUser) {
       actions.innerHTML =
@@ -8324,7 +8363,25 @@ window.openNoticeBoardDetail = function(id) {
     document.getElementById('noticeBoardWriteBar').style.display = 'none';
     document.getElementById('noticeBoardForm').style.display = 'none';
     document.getElementById('noticeBoardDetail').style.display = 'flex';
+    document.getElementById('noticeBoardDetail').dataset.openId = id;
   });
+};
+
+// 첨부파일 개별 삭제
+window.nbDeleteAttachment = function(docId, idx) {
+  if(!confirm('이 첨부파일을 삭제하시겠습니까?')) return;
+  db.collection('noticeBoard').doc(docId).get().then(function(doc) {
+    if(!doc.exists) return;
+    var atts = doc.data().attachments || [];
+    var removed = atts.splice(idx, 1)[0];
+    if(removed && removed.path && firebase.storage) {
+      firebase.storage().ref(removed.path).delete().catch(function(){});
+    }
+    return db.collection('noticeBoard').doc(docId).update({ attachments: atts });
+  }).then(function() {
+    showToast('📎 첨부파일이 삭제됐어요.');
+    openNoticeBoardDetail(docId);
+  }).catch(function(e) { alert('삭제 실패: '+e.message); });
 };
 
 window.closeNoticeBoardDetail = function() { showNoticeBoardList(); };
@@ -8397,11 +8454,27 @@ window.toggleDetailAreaUnit = function(unit) {
   });
 };
 
+// 첨부파일 목록 렌더링
+window.nbRenderFileList = function() {
+  var input = document.getElementById('nbFormFiles');
+  var listEl = document.getElementById('nbFormFileList');
+  listEl.innerHTML = '';
+  if(!input || !input.files) return;
+  Array.from(input.files).forEach(function(file) {
+    var tag = document.createElement('div');
+    tag.style.cssText = 'display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;';
+    tag.innerHTML = '📄 ' + file.name + ' <span style="color:var(--text-muted);font-size:11px;">(' + (file.size > 1024*1024 ? (file.size/1024/1024).toFixed(1)+'MB' : Math.round(file.size/1024)+'KB') + ')</span>';
+    listEl.appendChild(tag);
+  });
+};
+
 // 작성 폼 열기
 window.openNoticeBoardWrite = function() {
   document.getElementById('nbFormId').value = '';
   document.getElementById('nbFormTitle').value = '';
   document.getElementById('nbFormContent').value = '';
+  document.getElementById('nbFormFiles').value = '';
+  document.getElementById('nbFormFileList').innerHTML = '';
   _nbOrigTitle = '';
   _nbOrigContent = '';
   _nbIsEditing = true;
@@ -8428,6 +8501,8 @@ window.editNoticeBoardPost = function(id) {
     document.getElementById('nbFormId').value = id;
     document.getElementById('nbFormTitle').value = d.title || '';
     document.getElementById('nbFormContent').value = d.content || '';
+    document.getElementById('nbFormFiles').value = '';
+    document.getElementById('nbFormFileList').innerHTML = '';
     _nbOrigTitle = d.title || '';
     _nbOrigContent = d.content || '';
     _nbIsEditing = true;
@@ -8449,32 +8524,76 @@ window.saveNoticeBoardPost = function() {
   if(!content) { alert('내용을 입력해주세요.'); document.getElementById('nbFormContent').focus(); return; }
   if(!db) return;
   var u = firebase.auth().currentUser;
-  var data = {
-    title: title,
-    content: content,
-    author: u ? u.email : '',
-    authorName: u ? (u.displayName || u.email) : '관리자',
-  };
-  var prom;
-  if(id) {
-    data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-    prom = db.collection('noticeBoard').doc(id).update(data);
-  } else {
-    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-    prom = db.collection('noticeBoard').add(data);
+  var filesInput = document.getElementById('nbFormFiles');
+  var files = filesInput && filesInput.files ? Array.from(filesInput.files) : [];
+
+  var saveBtn = document.querySelector('#noticeBoardForm .btn-primary');
+  if(saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
+
+  function doSave(newAttachments) {
+    var data = {
+      title: title,
+      content: content,
+      author: u ? u.email : '',
+      authorName: u ? (u.displayName || u.email) : '관리자',
+    };
+    var prom;
+    if(id) {
+      data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+      prom = db.collection('noticeBoard').doc(id).get().then(function(doc) {
+        var existing = (doc.exists && doc.data().attachments) ? doc.data().attachments : [];
+        data.attachments = existing.concat(newAttachments);
+        return db.collection('noticeBoard').doc(id).update(data);
+      });
+    } else {
+      data.attachments = newAttachments;
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      prom = db.collection('noticeBoard').add(data);
+    }
+    prom.then(function() {
+      showToast(id ? '✅ 게시글이 수정됐어요!' : '✅ 게시글이 등록됐어요!');
+      _nbIsEditing = false;
+      showNoticeBoardList();
+    }).catch(function(e) {
+      alert('저장 실패: '+e.message);
+    }).finally(function() {
+      if(saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 저장'; }
+    });
   }
-  prom.then(function() {
-    showToast(id ? '✅ 공지가 수정됐어요!' : '✅ 공지가 등록됐어요!');
-    showNoticeBoardList();
-  }).catch(function(e) { alert('저장 실패: '+e.message); });
+
+  if(files.length === 0) { doSave([]); return; }
+
+  var storage = firebase.storage ? firebase.storage() : null;
+  if(!storage) { alert('Firebase Storage가 초기화되지 않았습니다.'); doSave([]); return; }
+
+  var uploaded = [], done = 0;
+  files.forEach(function(file) {
+    var path = 'noticeBoard/' + Date.now() + '_' + file.name;
+    storage.ref(path).put(file).then(function(snap) {
+      return snap.ref.getDownloadURL();
+    }).then(function(url) {
+      uploaded.push({ name: file.name, url: url, size: file.size, path: path });
+      if(++done === files.length) doSave(uploaded);
+    }).catch(function(e) {
+      console.error('파일 업로드 실패:', e);
+      if(++done === files.length) doSave(uploaded);
+    });
+  });
 };
 
 // 삭제
 window.deleteNoticeBoardPost = function(id) {
-  if(!confirm('이 공지를 삭제하시겠습니까?')) return;
+  if(!confirm('이 게시글을 삭제하시겠습니까?')) return;
   if(!db) return;
-  db.collection('noticeBoard').doc(id).delete().then(function() {
-    showToast('🗑 공지가 삭제됐어요.');
+  db.collection('noticeBoard').doc(id).get().then(function(doc) {
+    if(doc.exists) {
+      (doc.data().attachments || []).forEach(function(att) {
+        if(att.path && firebase.storage) firebase.storage().ref(att.path).delete().catch(function(){});
+      });
+    }
+    return db.collection('noticeBoard').doc(id).delete();
+  }).then(function() {
+    showToast('🗑 게시글이 삭제됐어요.');
     showNoticeBoardList();
   }).catch(function(e) { alert('삭제 실패: '+e.message); });
 };
