@@ -148,6 +148,13 @@
         style="background:none;border:1px solid var(--border);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:14px;color:var(--text-muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;">◀</button>
     </div>
   </div>
+
+  <!-- ① 고객 상세 영역 (상단) -->
+  <div class="customer-detail-area">
+    <div id="customerDetail" style="flex:1;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px;height:100%;box-sizing:border-box;"></div>
+  </div>
+
+  <!-- ② 검색창 + 리스트 (하단) -->
   <div class="customer-panel-body">
     <textarea id="customerSearch" class="search-input"
       placeholder="🔍 이름/연락처/메모 검색..."
@@ -171,10 +178,6 @@
       <button id="customerDoneToggleBtn" onclick="toggleCustomerDoneSection()" style="width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--border);padding:8px 4px 4px;font-size:12px;color:var(--text-muted);cursor:pointer;display:none;">✅ 완료 <span id="customerDoneCount">0</span>건 ▾</button>
       <div id="customerDoneList" style="display:none;"></div>
     </div>
-  </div>
-  <!-- 고객 상세 영역 -->
-  <div class="customer-detail-area">
-    <div id="customerDetail" style="flex:1;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px;height:100%;box-sizing:border-box;"></div>
   </div>
 </div>
 
