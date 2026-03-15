@@ -2701,7 +2701,7 @@ function renderTable() {
       var rowCells = orderedCols.map(function(c){
         switch(c.key) {
           case 'propNo':    return '<td style="font-weight:700;color:var(--accent)">'+(p.propNo||'-')+'</td>';
-          case 'photo':     return '<td>'+thumb+'</td>';
+          case 'photo':     return '<td style="width:32px;min-width:32px;max-width:32px;">'+thumb+'</td>';
           case 'georae':    return '<td><span class="tag tag-'+(p.georae||'')+'">'+(p.georae||'-')+'</span></td>';
           case 'type':      return '<td><span class="tag tag-'+(p.type||'')+'">'+(p.type||'-')+'</span></td>';
           case 'address':   return '<td class="address-text">'+(p.address||'-')+'</td>';
@@ -2730,8 +2730,8 @@ function renderTable() {
           case 'ownerName': return '<td class="muted">'+(p.ownerName||'-')+'</td>';
           case 'createdDate': return '<td class="muted" style="font-size:11px">'+(p.createdDate||'-')+'</td>';
           case 'updatedDate': return '<td class="muted" style="font-size:11px">'+(p.updatedDate||'-')+'</td>';
-          case 'adStatus':  return '<td style="text-align:center"><span class="ad-light '+getAdLightClass(p.adStart, p.adEnd, p.adReady)+'"></span></td>';
-          case 'departure': return '<td style="text-align:center"><span class="dep-light '+(p.departure===false?'':'on')+'"></span></td>';
+          case 'adStatus':  return '<td style="width:30px;min-width:30px;max-width:30px;text-align:center"><span class="ad-light '+getAdLightClass(p.adStart, p.adEnd, p.adReady)+'"></span></td>';
+          case 'departure': return '<td style="width:30px;min-width:30px;max-width:30px;text-align:center"><span class="dep-light '+(p.departure===false?'':'on')+'"></span></td>';
           default: {
             var sv = p[c.key]||''; var ss = getSuffixCached(c.key);
             var rightAlignKeys = ['pricePerPyeong','premium','officialBuildingPrice','officialLandPrice','maintenance','cleaningFee'];
@@ -5981,7 +5981,7 @@ function openCustomerForm(id) {
       '<div class="form-group"><label>연락처</label><input id="cust_phone" type="tel" inputmode="tel" maxlength="13" class="form-input" value="'+escapeHtml(c?c.phone:'')+'" placeholder="예) 010-0000-0000" oninput="formatPhoneInput(this)"></div>'+
       '<div class="form-group"><label>매물종류</label><select id="cust_type" class="form-select">'+typeOpts+'</select></div>'+
       '<div class="form-group"><label>거래유형</label><select id="cust_georae" class="form-select">'+georaeOpts+'</select></div>'+
-      '<div class="form-group full"><label>필요조건</label><textarea id="cust_memo" class="form-textarea" style="min-height:140px;">'+escapeHtml(c?c.memo:'')+'</textarea></div>'+
+      '<div class="form-group full"><label>메모</label><textarea id="cust_memo" class="form-textarea" style="min-height:140px;">'+escapeHtml(c?c.memo:'')+'</textarea></div>'+
     '</div>';
   var georaeEl = document.getElementById('cust_georae');
   var typeEl = document.getElementById('cust_type');
@@ -6094,7 +6094,7 @@ function openCustomerDetail(id, keep, targetEl) {
       '</div>'+
     '</div>'+
 
-    '<div class="detail-section"><div class="detail-section-title">필요조건</div>'+
+    '<div class="detail-section"><div class="detail-section-title">메모</div>'+
       '<div style="font-size:13px;line-height:1.8;white-space:pre-wrap;">'+(c.memo?linkifyMemo(c.memo):'<span class="muted">메모 없음</span>')+'</div>'+
     '</div>'+
 
