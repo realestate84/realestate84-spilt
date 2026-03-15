@@ -159,6 +159,7 @@ th{position:relative;}
   border-left:1px solid var(--border);
   background:var(--surface);
   overflow:hidden;
+  transition: width 0.25s ease, min-width 0.25s ease, opacity 0.2s ease;
 }
 .customer-panel-header{
   display:flex;
@@ -210,14 +211,14 @@ th{position:relative;}
 /* 고객패널 닫혔을 때: 리스트 중앙 정렬 */
 .list-panel.centered{
   max-width:1300px;
-  margin:0 auto;
   width:100%;
+}
+.split-layout.panel-closed,
+.split-layout:has(.customer-panel.collapsed){
+  justify-content:center;
 }
 
 /* 고객패널 토글 애니메이션 */
-.customer-panel{
-  transition: width 0.25s ease, min-width 0.25s ease, opacity 0.2s ease;
-}
 .customer-panel.collapsed{
   width:0 !important;
   min-width:0 !important;
@@ -241,8 +242,8 @@ th{position:relative;}
   .split-layout{flex-direction:column;overflow:visible;height:auto;}
   .customer-panel{
     width:100%;
-    border-right:none;
-    border-bottom:2px solid var(--border);
+    border-left:none;
+    border-top:2px solid var(--border);
     max-height:52vh;
   }
   .customer-panel-body{max-height:30vh;}
@@ -250,7 +251,3 @@ th{position:relative;}
   .list-panel{min-height:50vh;}
   .list-panel .container{padding:12px 14px;}
 }
-
-/* body/html 높이 보정 (base.css의 body overflow:hidden과 함께 작동) */
-html{ height:100%; }
-body{ height:100vh; overflow:hidden; }
