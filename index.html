@@ -5981,7 +5981,7 @@ function openCustomerForm(id) {
       '<div class="form-group"><label>연락처</label><input id="cust_phone" type="tel" inputmode="tel" maxlength="13" class="form-input" value="'+escapeHtml(c?c.phone:'')+'" placeholder="예) 010-0000-0000" oninput="formatPhoneInput(this)"></div>'+
       '<div class="form-group"><label>매물종류</label><select id="cust_type" class="form-select">'+typeOpts+'</select></div>'+
       '<div class="form-group"><label>거래유형</label><select id="cust_georae" class="form-select">'+georaeOpts+'</select></div>'+
-      '<div class="form-group full"><label>메모</label><textarea id="cust_memo" class="form-textarea" style="min-height:140px;">'+escapeHtml(c?c.memo:'')+'</textarea></div>'+
+      '<div class="form-group full"><label>필요조건</label><textarea id="cust_memo" class="form-textarea" style="min-height:140px;">'+escapeHtml(c?c.memo:'')+'</textarea></div>'+
     '</div>';
   var georaeEl = document.getElementById('cust_georae');
   var typeEl = document.getElementById('cust_type');
@@ -6094,7 +6094,7 @@ function openCustomerDetail(id, keep, targetEl) {
       '</div>'+
     '</div>'+
 
-    '<div class="detail-section"><div class="detail-section-title">메모</div>'+
+    '<div class="detail-section"><div class="detail-section-title">필요조건</div>'+
       '<div style="font-size:13px;line-height:1.8;white-space:pre-wrap;">'+(c.memo?linkifyMemo(c.memo):'<span class="muted">메모 없음</span>')+'</div>'+
     '</div>'+
 
