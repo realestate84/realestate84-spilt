@@ -5787,11 +5787,6 @@ function closeCustomers() {
     if(_modalStatePushed) { if(window.history && window.history.back) window.history.back(); return; }
     modal.classList.remove('active');
   }
-  // DOM id 복원 (모달에서 패널로 돌아올 때)
-  var hidden = document.getElementById('customerDetail__hidden');
-  var modalEl = document.getElementById('customerDetail');
-  if(hidden) hidden.id = 'customerDetail';
-  if(modalEl && modalEl.id === 'customerDetail') modalEl.id = 'customerDetailModal';
 }
 
 // ── 모바일 모달용 고객 렌더링 ─────────────────
@@ -5837,17 +5832,11 @@ function renderCustomerListModal() {
 }
 
 function openCustomerDetailModal(id, keep) {
+  var modalEl = document.getElementById('customerDetailModal');
+  if(!modalEl) return;
   _currentCustomerId = id;
   renderCustomerListModal();
-  // 패널의 openCustomerDetail 재사용 - 단 대상 엘리먼트를 Modal로 교체
-  var origEl = document.getElementById('customerDetail');
-  var modalEl = document.getElementById('customerDetailModal');
-  if(!origEl || !modalEl) return;
-  // 잠시 customerDetail을 modalEl로 교체해서 기존 함수 활용
-  origEl.id = 'customerDetail__hidden';
-  modalEl.id = 'customerDetail';
-  openCustomerDetail(id, keep);
-  // 복원은 닫힐 때
+  openCustomerDetail(id, keep, modalEl);
 }
 
 var _toggleCustomerDoneModalOpen = false;
@@ -6073,13 +6062,14 @@ function deleteCustomer(id) {
   });
 }
 
-function openCustomerDetail(id, keep) {
+function openCustomerDetail(id, keep, targetEl) {
   var c = getCustomerById(id);
-  if(!c) { renderCustomerEmpty(); return; }
+  if(!c) { if(targetEl) targetEl.innerHTML=''; else renderCustomerEmpty(); return; }
   _currentCustomerId = id;
-  renderCustomerList();
+  if(targetEl) renderCustomerListModal();
+  else renderCustomerList();
 
-  var el = document.getElementById('customerDetail');
+  var el = targetEl || document.getElementById('customerDetail');
   if(!el) return;
   var shown = c.shownProps || [];
   var hist = c.history || [];
