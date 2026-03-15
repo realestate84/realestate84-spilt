@@ -3,8 +3,8 @@
   .header-actions{display:none !important;}
   .mobile-menu-btn{display:flex !important;}
   header{flex-wrap:nowrap;gap:10px;}
-  /* 분할 레이아웃: 태블릿에서 고객패널 너비 축소 */
-  .customer-panel{width:300px;}
+  /* 분할 레이아웃: 태블릿에서 고객패널 너비 */
+  .customer-panel{width:420px;}
 }
 
 /* ── 모바일 (768px) ───────────────────────── */
