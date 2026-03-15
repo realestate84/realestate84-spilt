@@ -135,63 +135,20 @@
   <button class="btn btn-outline" onclick="doLogout()" style="color:var(--danger);border-color:var(--danger);">로그아웃</button>
 </div>
 
-<!-- 분할 레이아웃: 좌측 고객문의 패널 + 우측 매물 리스트 -->
+<!-- 분할 레이아웃: 좌측 매물 리스트 + 우측 고객문의 패널 -->
 <div class="split-layout">
 
-<!-- ══ 좌측: 고객문의 패널 ══════════════════════════ -->
-<div class="customer-panel" id="customerPanel">
-  <div class="customer-panel-header">
-    <div style="font-size:14px;font-weight:700;color:var(--text);" id="customerPanelTitle">👥 고객문의</div>
-    <div style="display:flex;gap:6px;align-items:center;">
-      <button class="btn btn-primary btn-sm" onclick="openCustomerForm()">＋ 문의등록</button>
-      <button id="customerPanelToggleBtn" onclick="toggleCustomerPanel()" title="패널 닫기"
-        style="background:none;border:1px solid var(--border);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:14px;color:var(--text-muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;">◀</button>
-    </div>
-  </div>
-
-  <!-- ① 고객 상세 영역 (상단) -->
-  <div class="customer-detail-area">
-    <div id="customerDetail" style="flex:1;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px;height:100%;box-sizing:border-box;"></div>
-  </div>
-
-  <!-- ② 검색창 + 리스트 (하단) -->
-  <div class="customer-panel-body">
-    <textarea id="customerSearch" class="search-input"
-      placeholder="🔍 이름/연락처/메모 검색..."
-      oninput="renderCustomerList()"
-      style="height:15px;min-height:15px;max-height:80px;padding:6px 10px;font-size:12px;resize:vertical;margin-bottom:8px;"></textarea>
-    <div class="table-wrap" style="flex:1;min-height:0;">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:30%;">이름</th>
-            <th style="width:25%;">매물종류</th>
-            <th style="width:20%;">거래유형</th>
-            <th style="width:15%;">매물</th>
-          </tr>
-        </thead>
-        <tbody id="customerListBody"></tbody>
-      </table>
-    </div>
-    <div style="font-size:11px;color:var(--text-muted);padding:4px 0;" id="customerListInfo"></div>
-    <div id="customerDoneSection">
-      <button id="customerDoneToggleBtn" onclick="toggleCustomerDoneSection()" style="width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--border);padding:8px 4px 4px;font-size:12px;color:var(--text-muted);cursor:pointer;display:none;">✅ 완료 <span id="customerDoneCount">0</span>건 ▾</button>
-      <div id="customerDoneList" style="display:none;"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ══ 우측: 매물 리스트 패널 ══════════════════════════ -->
+<!-- ══ 좌측: 매물 리스트 패널 ══════════════════════════ -->
 <div class="list-panel">
 
 <!-- 패널 닫혔을 때 보이는 열기 탭 -->
 <div id="customerPanelTab" onclick="toggleCustomerPanel()" title="고객문의 열기"
-  style="display:none;position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:10;
-         background:var(--surface);border:1px solid var(--border);border-right:none;
-         border-radius:0 8px 8px 0;padding:12px 6px;cursor:pointer;
+  style="display:none;position:absolute;right:0;top:50%;transform:translateY(-50%);z-index:10;
+         background:var(--surface);border:1px solid var(--border);border-left:none;
+         border-radius:8px 0 0 8px;padding:12px 6px;cursor:pointer;
          writing-mode:vertical-rl;font-size:12px;font-weight:600;color:var(--accent);
-         box-shadow:2px 0 8px rgba(0,0,0,0.06);letter-spacing:0.05em;">
-  👥 고객문의 ▶
+         box-shadow:-2px 0 8px rgba(0,0,0,0.06);letter-spacing:0.05em;">
+  👥 고객문의 ◀
 </div>
 <div class="container">
   <div class="filter-bar">
@@ -255,6 +212,50 @@
   </div>
 </div>
 </div><!-- /list-panel -->
+
+<!-- ══ 우측: 고객문의 패널 ══════════════════════════ -->
+<div class="customer-panel" id="customerPanel">
+  <div class="customer-panel-header">
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button id="customerPanelToggleBtn" onclick="toggleCustomerPanel()" title="패널 닫기"
+        style="background:none;border:1px solid var(--border);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:14px;color:var(--text-muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;">▶</button>
+      <button class="btn btn-primary btn-sm" onclick="openCustomerForm()">＋ 문의등록</button>
+    </div>
+    <div style="font-size:14px;font-weight:700;color:var(--text);" id="customerPanelTitle">👥 고객문의</div>
+  </div>
+
+  <!-- ① 고객 상세 영역 (상단) -->
+  <div class="customer-detail-area">
+    <div id="customerDetail" style="flex:1;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px;height:100%;box-sizing:border-box;"></div>
+  </div>
+
+  <!-- ② 검색창 + 리스트 (하단) -->
+  <div class="customer-panel-body">
+    <textarea id="customerSearch" class="search-input"
+      placeholder="🔍 이름/연락처/메모 검색..."
+      oninput="renderCustomerList()"
+      style="height:15px;min-height:15px;max-height:80px;padding:6px 10px;font-size:12px;resize:vertical;margin-bottom:8px;"></textarea>
+    <div class="table-wrap" style="flex:1;min-height:0;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:30%;">이름</th>
+            <th style="width:25%;">매물종류</th>
+            <th style="width:20%;">거래유형</th>
+            <th style="width:15%;">매물</th>
+          </tr>
+        </thead>
+        <tbody id="customerListBody"></tbody>
+      </table>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);padding:4px 0;" id="customerListInfo"></div>
+    <div id="customerDoneSection">
+      <button id="customerDoneToggleBtn" onclick="toggleCustomerDoneSection()" style="width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--border);padding:8px 4px 4px;font-size:12px;color:var(--text-muted);cursor:pointer;display:none;">✅ 완료 <span id="customerDoneCount">0</span>건 ▾</button>
+      <div id="customerDoneList" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
 </div><!-- /split-layout -->
 
 <!-- 등록/수정 모달 -->
