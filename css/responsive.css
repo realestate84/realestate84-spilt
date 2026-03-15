@@ -3,8 +3,11 @@
   .header-actions{display:none !important;}
   .mobile-menu-btn{display:flex !important;}
   header{flex-wrap:nowrap;gap:10px;}
-  /* 분할 레이아웃: 태블릿에서 고객패널 너비 */
-  .customer-panel{width:420px;}
+  /* 분할 레이아웃: 태블릿에서 고객패널 숨김 */
+  .customer-panel{display:none !important;}
+  .customer-panel.collapsed{display:none !important;}
+  .list-panel{width:100% !important;flex:1 !important;max-width:100% !important;}
+  #customerPanelTab{display:none !important;}
 }
 
 /* ── 모바일 (768px) ───────────────────────── */
@@ -15,12 +18,14 @@
   .form-grid{grid-template-columns:1fr;}
   .detail-grid{grid-template-columns:1fr;}
   .mobile-drawer.open{display:block !important;}
-  /* 분할 레이아웃: 모바일에서 세로 전환 */
-  .split-layout{flex-direction:column !important;height:auto;overflow:visible;}
-  .customer-panel{width:100% !important;border-right:none;border-bottom:2px solid var(--border);max-height:52vh;}
-  .customer-panel-body{max-height:28vh;}
-  .customer-detail-area{max-height:24vh;}
-  .list-panel{min-height:50vh;}
+  /* mainScreen 모바일 높이 보정 */
+  #mainScreen{height:100svh !important;}
+  /* 분할 레이아웃: 모바일에서 고객패널 완전 숨김, 리스트 전체 너비 */
+  .split-layout{flex-direction:row !important;overflow:hidden;}
+  .customer-panel{display:none !important;}
+  .customer-panel.collapsed{display:none !important;}
+  .list-panel{width:100% !important;flex:1 !important;max-width:100% !important;min-height:0;}
+  #customerPanelTab{display:none !important;}
   /* 기존 customersModal 모바일 스타일 유지 (하위호환) */
   #customersModal .modal-body{flex-direction:column;overflow:auto;}
   #customersModal .customer-left{width:100% !important;min-height:30vh;order:2;}
