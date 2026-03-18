@@ -5894,6 +5894,25 @@ window.addEventListener('DOMContentLoaded', function(){
   } catch(e){}
 });
 
+// ── 창 넓이 변화 감지: 모달→패널 자동 전환 ──────────
+(function(){
+  var _resizeTimer = null;
+  window.addEventListener('resize', function(){
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(function(){
+      // 1401px 이상(패널 표시 구간)으로 넓어졌을 때 모달이 열려 있으면 자동으로 닫기
+      if(window.innerWidth > 1400) {
+        var modal = document.getElementById('customersModal');
+        if(modal && modal.classList.contains('active')) {
+          modal.classList.remove('active');
+          // 모바일용 history state가 쌓여 있으면 정리
+          try { if(_modalStatePushed) { _modalStatePushed = false; } } catch(e){}
+        }
+      }
+    }, 150); // 리사이즈 끝난 후 150ms 뒤에 판정
+  });
+})();
+
 // ── 고객관리 ────────────────────────────────
 // 좁은 PC(1025~1400px)에서 모달 사용 여부 판정
 function _isNarrowPC() {
