@@ -165,7 +165,8 @@ th{position:relative;}
 .customer-panel-inner{
   display:flex;
   flex-direction:column;
-  width:100%;
+  flex:1;           /* customer-panel(row) 안에서 가로 전체 차지 */
+  min-height:0;     /* flex 높이 상속 보장 */
   overflow:hidden;
 }
 
