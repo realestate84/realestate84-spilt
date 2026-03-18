@@ -152,15 +152,23 @@ th{position:relative;}
 
 /* ── 왼쪽: 고객문의 패널 ── */
 .customer-panel{
-  width:570px;
+  width:900px;
   flex-shrink:0;
   display:flex;
-  flex-direction:column;
+  flex-direction:row;          /* 내부: 좌(상세) | 우(검색+리스트) 2열 */
   border-left:1px solid var(--border);
   background:var(--surface);
   overflow:hidden;
   transition: width 0.25s ease, min-width 0.25s ease, opacity 0.2s ease;
 }
+/* 패널 내부 래퍼: 헤더를 상단에 고정하고 아래에 2열 배치 */
+.customer-panel-inner{
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  overflow:hidden;
+}
+
 .customer-panel-header{
   display:flex;
   align-items:center;
@@ -170,15 +178,24 @@ th{position:relative;}
   flex-shrink:0;
   background:var(--surface);
 }
-/* 고객 상세 영역 (상단, 남은 공간 차지) */
-.customer-detail-area{
+
+/* 2열 콘텐츠 영역 */
+.customer-panel-columns{
+  display:flex;
+  flex-direction:row;
   flex:1;
   min-height:0;
+  overflow:hidden;
+}
+/* 고객 상세 영역 — 좌측 열 */
+.customer-detail-area{
+  flex:1;
+  min-width:0;
   padding:10px 12px;
   display:flex;
   flex-direction:column;
   overflow:hidden;
-  border-bottom:1px solid var(--border);
+  border-right:1px solid var(--border);   /* border-bottom 제거, 우측 구분선 */
 }
 .customer-detail-area #customerDetail{
   flex:1;
@@ -186,14 +203,13 @@ th{position:relative;}
   overflow:auto;
 }
 
-/* 검색+리스트 영역 (하단 고정) */
+/* 검색+리스트 영역 — 우측 고정 폭 열 */
 .customer-panel-body{
   display:flex;
   flex-direction:column;
   padding:10px 12px 6px;
-  flex:0 0 auto;
-  height:40%;
-  min-height:180px;
+  flex:0 0 300px;
+  min-width:220px;
   overflow:hidden;
 }
 
@@ -237,6 +253,25 @@ th{position:relative;}
 
 /* 필터바: split 레이아웃 안에서 sticky top 재조정 */
 .list-panel .filter-bar{top:0;}
+
+/* ── 좁은 PC 구간: 패널을 인라인 대신 모달로 전환 (1025px ~ 1400px) ── */
+@media(min-width:1025px) and (max-width:1400px){
+  .customer-panel{
+    display:none !important;          /* split-layout에서 패널 숨김 */
+  }
+  .customer-panel.collapsed{
+    display:none !important;
+  }
+  .list-panel{
+    width:100% !important;
+    flex:1 !important;
+    max-width:100% !important;
+  }
+  /* list-panel 우측에 고객패널 열기 탭 유지 */
+  #customerPanelTab{
+    display:flex !important;
+  }
+}
 
 /* ── 모바일 대응 (768px 이하) ── */
 @media(max-width:768px){
