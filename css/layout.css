@@ -203,13 +203,13 @@ th{position:relative;}
   overflow:auto;
 }
 
-/* 검색+리스트 영역 — 우측 고정 폭 열 */
+/* 검색+리스트 영역 — 우측 열 (고객상세와 동일 비율) */
 .customer-panel-body{
   display:flex;
   flex-direction:column;
   padding:10px 12px 6px;
-  flex:0 0 300px;
-  min-width:220px;
+  flex:1;
+  min-width:0;
   overflow:hidden;
 }
 
