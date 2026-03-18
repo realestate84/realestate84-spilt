@@ -58,7 +58,8 @@
 /* ── 헤더 ─────────────────────────────────── */
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;height:60px;min-height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:env(safe-area-inset-top,0);z-index:100;box-shadow:0 1px 8px rgba(0,0,0,0.06);gap:8px;overflow:hidden;flex-wrap:nowrap;}
 .logo{font-family:'Nanum Gothic',sans-serif;font-size:20px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap;flex-shrink:0;}
-.header-actions{display:flex;gap:3px;align-items:center;flex-wrap:nowrap;justify-content:flex-end;overflow:hidden;flex:1;min-width:0;}
+.header-actions{display:flex;gap:3px;align-items:center;flex-wrap:nowrap;justify-content:flex-end;overflow-x:auto;overflow-y:hidden;flex:1;min-width:0;scrollbar-width:none;}
+.header-actions::-webkit-scrollbar{display:none;}
 .header-actions .btn{padding:3px 8px;font-size:11px;border-radius:6px;gap:3px;white-space:nowrap;flex-shrink:0;}
 
 /* ── 컨테이너 ─────────────────────────────── */
@@ -120,8 +121,8 @@ th{position:relative;}
 
 /* ── 분할 레이아웃 ────────────────────────── */
 .split-layout{display:flex;height:calc(100vh - 60px - 34px - env(safe-area-inset-top,0));overflow:hidden;}
-.list-panel{flex:1;min-width:0;display:flex;flex-direction:column;position:relative;overflow:hidden;}
-.list-panel .container{height:100%;max-height:100%;overflow:hidden;}
+.list-panel{flex:1;min-width:0;width:0;display:flex;flex-direction:column;position:relative;overflow:hidden;}
+.list-panel .container{width:100% !important;max-width:none !important;margin:0 !important;height:100%;max-height:100%;overflow:hidden;}
 
 /* ── 고객문의 패널 (2단: 좌=상세 / 우=리스트) ── */
 .customer-panel{
