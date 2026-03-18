@@ -28,6 +28,11 @@
 <link rel="stylesheet" href="css/modal.css">
 <link rel="stylesheet" href="css/responsive.css">
 
+<style>
+@keyframes aiRecommendSpin {
+  to { transform: rotate(360deg); }
+}
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -227,29 +232,37 @@
     <div id="customerDetail" style="flex:1;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px;height:100%;box-sizing:border-box;"></div>
   </div>
 
-  <!-- ② 검색창 + 리스트 (하단) -->
-  <div class="customer-panel-body">
-    <textarea id="customerSearch" class="search-input"
-      placeholder="🔍 이름/연락처/메모 검색..."
-      oninput="renderCustomerList()"
-      style="height:15px;min-height:15px;max-height:80px;padding:6px 10px;font-size:12px;resize:vertical;margin-bottom:8px;"></textarea>
-    <div class="table-wrap" style="flex:1;min-height:0;">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:30%;">이름</th>
-            <th style="width:25%;">매물종류</th>
-            <th style="width:20%;">거래유형</th>
-            <th style="width:15%;">매물</th>
-          </tr>
-        </thead>
-        <tbody id="customerListBody"></tbody>
-      </table>
-    </div>
-    <div style="font-size:11px;color:var(--text-muted);padding:4px 0;" id="customerListInfo"></div>
-    <div id="customerDoneSection">
-      <button id="customerDoneToggleBtn" onclick="toggleCustomerDoneSection()" style="width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--border);padding:8px 4px 4px;font-size:12px;color:var(--text-muted);cursor:pointer;display:none;">✅ 완료 <span id="customerDoneCount">0</span>건 ▾</button>
-      <div id="customerDoneList" style="display:none;"></div>
+  <!-- ② 검색창 + 리스트 (하단, 토글 가능) -->
+  <div class="customer-panel-body" id="customerPanelBody">
+    <!-- 토글 버튼 -->
+    <button class="customer-list-toggle-btn" onclick="toggleCustomerListPanel()" id="customerListToggleBtn">
+      <span>📋 고객 목록 <span id="customerListToggleCount" style="color:var(--accent);font-weight:700;margin-left:2px;"></span></span>
+      <span class="customer-list-toggle-arrow" id="customerListToggleArrow">▲</span>
+    </button>
+    <!-- 접히는 콘텐츠 -->
+    <div class="customer-list-content" id="customerListContent">
+      <textarea id="customerSearch" class="search-input"
+        placeholder="🔍 이름/연락처/메모 검색..."
+        oninput="renderCustomerList()"
+        style="height:15px;min-height:15px;max-height:80px;padding:6px 10px;font-size:12px;resize:vertical;margin-bottom:8px;flex-shrink:0;"></textarea>
+      <div class="table-wrap" style="flex:1;min-height:0;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:30%;">이름</th>
+              <th style="width:25%;">매물종류</th>
+              <th style="width:20%;">거래유형</th>
+              <th style="width:15%;">매물</th>
+            </tr>
+          </thead>
+          <tbody id="customerListBody"></tbody>
+        </table>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);padding:4px 0;" id="customerListInfo"></div>
+      <div id="customerDoneSection">
+        <button id="customerDoneToggleBtn" onclick="toggleCustomerDoneSection()" style="width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--border);padding:8px 4px 4px;font-size:12px;color:var(--text-muted);cursor:pointer;display:none;">✅ 완료 <span id="customerDoneCount">0</span>건 ▾</button>
+        <div id="customerDoneList" style="display:none;"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -6071,6 +6084,8 @@ function renderCustomerList() {
     var doneTot   = customers.filter(function(c){ return  c.done; }).length;
     info.textContent = '진행중 ' + activeTot + '명' + (doneTot > 0 ? ' / 완료 ' + doneTot + '명' : '') + (q ? ' (검색 ' + allList.length + '명)' : '');
   }
+  // 토글 버튼 카운트 뱃지 갱신
+  updateCustomerListToggleCount(activeList.length);
 }
 
 function toggleCustomerDoneSection() {
@@ -6094,6 +6109,42 @@ function toggleCustomerDoneSection() {
   }
 }
 
+// ── 고객 리스트 패널 토글 (PC 패널 하단 접기/펼치기) ──
+var _customerListPanelOpen = true;
+function toggleCustomerListPanel() {
+  _customerListPanelOpen = !_customerListPanelOpen;
+  var body   = document.getElementById('customerPanelBody');
+  var arrow  = document.getElementById('customerListToggleArrow');
+  if(!body) return;
+  if(_customerListPanelOpen) {
+    body.classList.remove('list-collapsed');
+    if(arrow) arrow.style.transform = '';
+  } else {
+    body.classList.add('list-collapsed');
+    if(arrow) arrow.style.transform = 'rotate(180deg)';
+  }
+  try { localStorage.setItem('customerListPanelOpen', _customerListPanelOpen ? '1' : '0'); } catch(e){}
+}
+
+// 패널 리스트 열림 상태 복원
+window.addEventListener('DOMContentLoaded', function(){
+  try {
+    var saved = localStorage.getItem('customerListPanelOpen');
+    if(saved === '0') {
+      _customerListPanelOpen = false;
+      var body  = document.getElementById('customerPanelBody');
+      var arrow = document.getElementById('customerListToggleArrow');
+      if(body)  body.classList.add('list-collapsed');
+      if(arrow) arrow.style.transform = 'rotate(180deg)';
+    }
+  } catch(e){}
+});
+
+// 리스트 카운트 뱃지 업데이트 헬퍼
+function updateCustomerListToggleCount(count) {
+  var el = document.getElementById('customerListToggleCount');
+  if(el) el.textContent = count > 0 ? '(' + count + ')' : '';
+}
 
 function openCustomerForm(id) {
   var c = id ? getCustomerById(id) : null;
@@ -6301,6 +6352,17 @@ function openCustomerDetail(id, keep, targetEl) {
       '<div style="font-size:13px;line-height:1.8;white-space:pre-wrap;">'+(c.memo?linkifyMemo(c.memo):'<span class="muted">메모 없음</span>')+'</div>'+
     '</div>'+
 
+    '<div class="detail-section" id="aiRecommendSection">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">'+
+        '<div class="detail-section-title" style="margin-bottom:0;">🤖 AI 매물 추천</div>'+
+        '<button class="btn btn-sm" onclick="runAiPropRecommend(\''+id+'\')" id="aiRecommendBtn" '+
+          'style="background:linear-gradient(135deg,#6c47f5,#3a7ef6);color:#fff;border:none;font-size:12px;padding:4px 12px;border-radius:6px;white-space:nowrap;">'+
+          '✨ 추천받기'+
+        '</button>'+
+      '</div>'+
+      '<div id="aiRecommendResult" style="font-size:12px;color:var(--text-muted);">필요조건을 입력하면 AI가 최적 매물을 추천해드려요.</div>'+
+    '</div>'+
+
     '<div class="detail-section"><div class="detail-section-title">🏠 고객에게 보여준 매물</div>'+
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">'+
         '<div style="position:relative;max-width:520px;min-width:240px;flex:1;">'+
@@ -6470,6 +6532,152 @@ function commitAddShownProperty(custId, propId, fromPicker) {
   }).catch(function(e){
     alert('추가 오류: ' + (e && e.message ? e.message : e));
   });
+}
+
+// ── AI 매물 추천 ────────────────────────────────────────────
+async function runAiPropRecommend(custId) {
+  var c = getCustomerById(custId);
+  if(!c) return;
+
+  var memo = (c.memo || '').trim();
+  if(!memo) {
+    document.getElementById('aiRecommendResult').innerHTML =
+      '<span style="color:var(--danger);">필요조건을 먼저 입력해주세요.</span>';
+    return;
+  }
+
+  var btn = document.getElementById('aiRecommendBtn');
+  var resultEl = document.getElementById('aiRecommendResult');
+  if(!resultEl) return;
+
+  var spinStyle = 'width:14px;height:14px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:aiRecommendSpin 0.8s linear infinite;flex-shrink:0;';
+
+  function setLoading(msg) {
+    resultEl.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);font-size:12px;">'+
+        '<div style="'+spinStyle+'"></div>'+ msg +
+      '</div>';
+  }
+
+  if(btn) { btn.disabled = true; btn.textContent = '분석 중...'; }
+
+  try {
+    // ① Firestore에서 전체 매물 불러오기
+    setLoading('전체 매물 불러오는 중...');
+    var snap = await db.collection(getPropertiesCollection()).get();
+    var allProps = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+
+    if(allProps.length === 0) {
+      resultEl.innerHTML = '<span style="color:var(--text-muted);">등록된 매물이 없습니다.</span>';
+      return;
+    }
+
+    // ② 매물 목록을 AI용 요약 텍스트로 변환
+    setLoading('AI가 ' + allProps.length + '개 매물을 분석하고 있어요...');
+
+    var propSummary = allProps.map(function(p) {
+      var price = (p.price !== undefined && p.price !== null && p.price !== '') ? p.price + '만원' : '';
+      var area = p.landArea ? p.landArea + (p.landAreaUnit === 'sqm' ? '㎡' : '평') : '';
+      return [
+        'ID:' + p.id,
+        p.type || '',
+        p.georae || '',
+        p.address || '',
+        price,
+        area,
+        p.zoning || '',
+        p.jimok || '',
+        p.buildingArea ? '건물' + p.buildingArea + '평' : '',
+        p.memo   ? p.memo.substring(0, 50)  : '',
+        p.note   ? p.note.substring(0, 50)  : ''
+      ].filter(Boolean).join(' | ');
+    }).join('\n');
+
+    var prompt =
+      '당신은 부동산 전문 AI입니다. 고객의 필요조건을 분석하여 아래 매물 목록에서 가장 적합한 매물 2개를 추천해주세요.\n\n' +
+      '## 고객 정보\n' +
+      '- 이름: ' + (c.name || '-') + '\n' +
+      '- 원하는 매물종류: ' + (c.custType || '무관') + '\n' +
+      '- 거래유형: ' + (c.custGeorae || '무관') + '\n' +
+      '- 필요조건:\n' + memo + '\n\n' +
+      '## 전체 매물 목록 (형식: ID | 종류 | 거래유형 | 주소 | 가격 | 면적 | 용도지역 | 지목 | 특이사항)\n' +
+      propSummary + '\n\n' +
+      '## 응답 규칙\n' +
+      '- 반드시 JSON만 응답. 다른 텍스트 절대 금지.\n' +
+      '- 고객 조건에 가장 잘 맞는 매물 2개 선택 (조건이 없는 항목은 무시)\n' +
+      '- 추천이유는 2~3문장, 고객 조건의 어떤 부분이 매물과 맞는지 구체적으로 설명\n' +
+      '응답 JSON:\n' +
+      '{"recommendations":[{"id":"매물ID","reason":"추천이유"},{"id":"매물ID","reason":"추천이유"}]}';
+
+    // ③ Claude API 호출
+    var PROXY_URL = 'https://realestate84.gsr365i.workers.dev';
+    var resp = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    var data = await resp.json();
+    var raw = data.content && data.content[0] && data.content[0].text;
+    if(!raw) throw new Error('응답 없음');
+    var jm = raw.match(/\{[\s\S]*\}/);
+    if(!jm) throw new Error('JSON 파싱 실패');
+    var parsed = JSON.parse(jm[0]);
+    var recs = (parsed.recommendations || []).filter(function(r){ return r && r.id; });
+    if(recs.length === 0) throw new Error('조건에 맞는 추천 매물을 찾지 못했어요.');
+
+    // ④ 추천 결과 렌더링
+    var html = '<div style="display:flex;flex-direction:column;gap:10px;">';
+    var rendered = 0;
+    recs.forEach(function(rec, idx) {
+      var p = allProps.find(function(x){ return x.id === rec.id; });
+      if(!p) return;
+      rendered++;
+      var title = (p.propNo ? 'No.' + p.propNo + ' · ' : '') + (p.address || '-');
+      var priceStr = (p.price !== undefined && p.price !== null && p.price !== '') ? formatPriceComma(p.price) : '';
+      if(p.georae === '월세' && p.monthlyRent) priceStr += (priceStr ? ' / ' : '') + formatMonthlyRentComma(p.monthlyRent);
+      var sub = [p.type, p.georae, priceStr].filter(Boolean).join(' · ');
+      var alreadyShown = (c.shownProps || []).indexOf(rec.id) !== -1;
+
+      html +=
+        '<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;">'+
+          '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap;">'+
+            '<div style="min-width:0;flex:1;">'+
+              '<div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+
+                '<span style="background:linear-gradient(135deg,#6c47f5,#3a7ef6);color:#fff;border-radius:4px;padding:1px 6px;font-size:10px;margin-right:6px;white-space:nowrap;">추천 '+(idx+1)+'</span>'+
+                escapeHtml(title)+
+              '</div>'+
+              '<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">'+escapeHtml(sub)+'</div>'+
+            '</div>'+
+            '<div style="display:flex;gap:6px;flex-shrink:0;">'+
+              '<button class="btn btn-outline btn-sm" onclick="openDetail(\''+rec.id+'\')" style="font-size:11px;padding:3px 8px;">상세보기</button>'+
+              (alreadyShown
+                ? '<span style="font-size:11px;color:var(--text-muted);padding:3px 6px;align-self:center;">✅ 이미 추가됨</span>'
+                : '<button class="btn btn-primary btn-sm" onclick="commitAddShownProperty(\''+custId+'\',\''+rec.id+'\',false);this.textContent=\'✅ 추가됨\';this.disabled=true;this.style.opacity=\'0.7\';" style="font-size:11px;padding:3px 8px;">+ 보여준 매물에 추가</button>')+
+            '</div>'+
+          '</div>'+
+          '<div style="font-size:11px;line-height:1.75;color:var(--text);background:rgba(58,126,246,0.05);border-left:3px solid var(--accent);padding:7px 10px;border-radius:0 6px 6px 0;">'+
+            '💡 ' + escapeHtml(rec.reason) +
+          '</div>'+
+        '</div>';
+    });
+    html += '</div>';
+
+    if(rendered === 0) throw new Error('추천된 매물 ID가 목록에 없습니다. 다시 시도해주세요.');
+    resultEl.innerHTML = html;
+
+  } catch(e) {
+    resultEl.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--danger);">'+
+        '⚠️ ' + escapeHtml(e.message || String(e)) +
+        ' <button class="btn btn-outline btn-sm" onclick="runAiPropRecommend(\''+custId+'\')" style="font-size:11px;margin-left:4px;">다시 시도</button>'+
+      '</div>';
+  } finally {
+    if(btn) { btn.disabled = false; btn.textContent = '✨ 추천받기'; }
+  }
 }
 
 function addShownPropertyToCustomer(custId) {
