@@ -217,17 +217,20 @@
 
 <!-- ══ 우측: 고객문의 패널 ══════════════════════════ -->
 <div class="customer-panel" id="customerPanel">
+  <div class="customer-panel-inner">
   <div class="customer-panel-header">
     <div style="font-size:14px;font-weight:700;color:var(--text);" id="customerPanelTitle">👥 고객문의</div>
     <button class="btn btn-primary btn-sm" onclick="openCustomerForm()">＋ 문의등록</button>
   </div>
 
-  <!-- ① 고객 상세 영역 (상단) -->
+  <div class="customer-panel-columns">
+
+  <!-- ① 고객 상세 영역 (좌측) -->
   <div class="customer-detail-area">
     <div id="customerDetail" style="flex:1;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px;height:100%;box-sizing:border-box;"></div>
   </div>
 
-  <!-- ② 검색창 + 리스트 (하단) -->
+  <!-- ② 검색창 + 리스트 (우측) -->
   <div class="customer-panel-body">
     <textarea id="customerSearch" class="search-input"
       placeholder="🔍 이름/연락처/메모 검색..."
@@ -251,8 +254,11 @@
       <button id="customerDoneToggleBtn" onclick="toggleCustomerDoneSection()" style="width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--border);padding:8px 4px 4px;font-size:12px;color:var(--text-muted);cursor:pointer;display:none;">✅ 완료 <span id="customerDoneCount">0</span>건 ▾</button>
       <div id="customerDoneList" style="display:none;"></div>
     </div>
-  </div>
-</div>
+  </div><!-- /customer-panel-body -->
+
+  </div><!-- /customer-panel-columns -->
+  </div><!-- /customer-panel-inner -->
+</div><!-- /customer-panel -->
 
 </div><!-- /split-layout -->
 
@@ -5833,6 +5839,11 @@ function closeSettings() {
 
 // ── 고객문의 패널 토글 ────────────────────
 function toggleCustomerPanel() {
+  // 좁은 PC(1025~1400px)에서는 탭 클릭 → 모달로 열기
+  if(_isNarrowPC()) {
+    openCustomers();
+    return;
+  }
   var panel       = document.getElementById('customerPanel');
   var tab         = document.getElementById('customerPanelTab');
   var listPanel   = document.querySelector('.list-panel');
@@ -5884,20 +5895,30 @@ window.addEventListener('DOMContentLoaded', function(){
 });
 
 // ── 고객관리 ────────────────────────────────
+// 좁은 PC(1025~1400px)에서 모달 사용 여부 판정
+function _isNarrowPC() {
+  var w = window.innerWidth;
+  return w > 1024 && w <= 1400;
+}
+
 function openCustomers() {
   var isMobile = window.innerWidth <= 1024;
-  if(isMobile) {
-    // 모바일 → 모달 방식
+  var isNarrowPC = _isNarrowPC();
+
+  if(isMobile || isNarrowPC) {
+    // 모바일 또는 좁은 PC → 모달 방식
     var titleEl = document.getElementById('customersModalTitle');
     if(titleEl) titleEl.textContent = '👥 고객문의 (' + (currentSector === SECTOR_COMMERCIAL ? '상업용' : '주거용') + ')';
     document.getElementById('customersModal').classList.add('active');
-    pushModalState();
+    // 좁은 PC에서는 히스토리 push 생략 (뒤로가기 오작동 방지)
+    if(isMobile) pushModalState();
     _currentCustomerId = null;
     renderCustomerEmptyModal();
     renderCustomerListModal();
     return;
   }
-  // PC → 패널 방식
+
+  // 넓은 PC → 패널 방식
   var panel = document.getElementById('customerPanel');
   if(panel && panel.classList.contains('collapsed')) toggleCustomerPanel();
   var titleEl = document.getElementById('customerPanelTitle');
