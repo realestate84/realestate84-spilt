@@ -6332,11 +6332,11 @@ function openCustomerDetail(id, keep, targetEl) {
         '<span>✨ AI 추천매물</span>'+
         '<button id="aiRecommendBtn" class="btn btn-sm" onclick="runAiPropRecommend(\''+id+'\')" '+
           'style="background:linear-gradient(135deg,#6c47f5,#3a7ef6);color:#fff;border:none;font-size:11px;padding:4px 12px;">'+
-          '추천 받기'+
+          (c.aiRecs && c.aiRecs.length ? '다시 추천' : '추천 받기')+
         '</button>'+
       '</div>'+
-      '<div id="aiRecommendResult" style="margin-top:8px;font-size:13px;color:var(--text-muted);">'+
-        '버튼을 누르면 필요조건에 맞는 매물 2개를 추천해드립니다.'+
+      '<div id="aiRecommendResult" style="margin-top:8px;">'+
+        renderAiRecCards(c, id)+
       '</div>'+
     '</div>'+
 
@@ -6361,14 +6361,72 @@ function openCustomerDetail(id, keep, targetEl) {
 
   renderCustomerShownProps(id);
   renderCustomerHistoryList(id, hist);
+  bindAiRecCardEvents();
 }
 
 
 // ── AI 추천매물 ──────────────────────────────
+// ── AI 추천매물 카드 렌더링 (저장된 데이터 기반) ──
+function renderAiRecCards(c, custId) {
+  if (!c.aiRecs || c.aiRecs.length === 0) {
+    return '<div style="font-size:13px;color:var(--text-muted);">버튼을 누르면 필요조건에 맞는 매물 2개를 추천해드립니다.</div>';
+  }
+  var html = '<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">';
+  c.aiRecs.forEach(function(rec) {
+    var p = properties.find(function(x){ return x.id === rec.propId; });
+    var address  = p ? escapeHtml(p.address||'-')  : escapeHtml(rec.address||rec.propId);
+    var georae   = p ? (p.georae||'')  : (rec.georae||'');
+    var type     = p ? (p.type||'')    : (rec.type||'');
+    var priceStr = p && p.price!=null && p.price!=='' ? formatPriceComma(p.price) : (rec.price||'-');
+    html +=
+      '<div class="ai-rec-card" data-custid="'+escapeHtml(custId)+'" data-propid="'+escapeHtml(rec.propId)+'" '+
+        'style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface);">'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap;">'+
+          '<span class="tag tag-'+escapeHtml(georae)+'">'+escapeHtml(georae||'-')+'</span>'+
+          '<span class="tag tag-'+escapeHtml(type.replace(/\//g,''))+'">'+escapeHtml(type||'-')+'</span>'+
+          '<span style="font-weight:700;font-size:13px;color:var(--accent);">'+escapeHtml(priceStr)+'</span>'+
+        '</div>'+
+        '<div style="font-size:13px;font-weight:500;margin-bottom:6px;">'+address+'</div>'+
+        '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;display:flex;align-items:center;gap:4px;">'+
+          '<span style="color:#6c47f5;font-size:12px;">&#10024;</span>'+escapeHtml(rec.reason||'')+
+        '</div>'+
+        '<div style="display:flex;gap:6px;">'+
+          '<button class="btn btn-outline btn-sm ai-rec-detail-btn" data-propid="'+escapeHtml(rec.propId)+'" '+
+            'style="font-size:11px;padding:3px 10px;">상세보기</button>'+
+          '<button class="btn btn-primary btn-sm ai-rec-add-btn" data-custid="'+escapeHtml(custId)+'" data-propid="'+escapeHtml(rec.propId)+'" '+
+            'style="font-size:11px;padding:3px 10px;">보여준 매물에 추가</button>'+
+        '</div>'+
+      '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+// AI 추천 카드 이벤트 바인딩 (openCustomerDetail 렌더링 후 호출)
+function bindAiRecCardEvents() {
+  var result = document.getElementById('aiRecommendResult');
+  if (!result) return;
+  result.querySelectorAll('.ai-rec-detail-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      openDetail(this.getAttribute('data-propid'));
+    });
+  });
+  result.querySelectorAll('.ai-rec-add-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      commitAddShownProperty(
+        this.getAttribute('data-custid'),
+        this.getAttribute('data-propid'),
+        true
+      );
+    });
+  });
+}
+
 async function runAiPropRecommend(custId) {
   var c = getCustomerById(custId);
   if (!c) return;
-
   var btn    = document.getElementById('aiRecommendBtn');
   var result = document.getElementById('aiRecommendResult');
   if (!result) return;
@@ -6380,10 +6438,14 @@ async function runAiPropRecommend(custId) {
   function setLoading(msg) {
     result.innerHTML =
       '<div style="display:flex;align-items:center;gap:8px;padding:10px 0;color:var(--text-muted);font-size:13px;">' +
-      '<span style="' + spinStyle + '"></span>' + escapeHtml(msg) + '</div>';
+      '<span style="'+spinStyle+'"></span>' + escapeHtml(msg) + '</div>';
   }
 
   if (btn) { btn.disabled = true; btn.textContent = '분석 중...'; }
+
+  // 다시 추천: Firebase에서 기존 추천 먼저 초기화
+  db.collection(getCustomersCollection()).doc(custId).update({ aiRecs: [] }).catch(function(){});
+
   setLoading('매물 목록을 불러오는 중...');
 
   try {
@@ -6402,53 +6464,43 @@ async function runAiPropRecommend(custId) {
     var candidates = allProps.filter(function(p){ return !p._deleted && !shownSet[p.id]; });
 
     if (candidates.length === 0) {
-      result.innerHTML = '<div style="padding:8px 0;color:var(--text-muted);font-size:13px;">추천 가능한 매물이 없습니다. (이미 보여준 매물 제외 후 후보 없음)</div>';
+      result.innerHTML = '<div style="padding:8px 0;color:var(--text-muted);font-size:13px;">추천 가능한 매물이 없습니다.</div>';
       if (btn) { btn.disabled = false; btn.textContent = '다시 추천'; }
       return;
     }
 
-    // 3. AI에 넘길 매물 요약
+    // 3. 매물 요약
     var propList = candidates.map(function(p){
       return {
-        id: p.id,
-        address: p.address || '',
-        georae: p.georae || '',
-        type: p.type || '',
-        price: (p.price !== undefined && p.price !== null && p.price !== '') ? String(p.price) : '',
-        landArea: p.landArea || '',
-        floorArea: p.floorArea || '',
-        exclusiveArea: p.exclusiveArea || '',
-        useZone: p.useZone || '',
-        jimok: p.jimok || '',
-        memo: (p.memo || '').slice(0, 80)
+        id: p.id, address: p.address||'', georae: p.georae||'', type: p.type||'',
+        price: (p.price!=null&&p.price!=='')?String(p.price):'',
+        landArea: p.landArea||'', floorArea: p.floorArea||'', exclusiveArea: p.exclusiveArea||'',
+        useZone: p.useZone||'', jimok: p.jimok||'', memo: (p.memo||'').slice(0,80)
       };
     });
 
     // 4. 프롬프트
     var custInfo =
-      '거래유형: ' + (c.custGeorae || '미지정') + '\n' +
-      '원하는 매물종류: ' + (c.custType || '미지정') + '\n' +
-      '필요조건:\n' + (c.memo || '(없음)');
-
+      '거래유형: '+(c.custGeorae||'미지정')+'\n'+
+      '원하는 매물종류: '+(c.custType||'미지정')+'\n'+
+      '필요조건:\n'+(c.memo||'(없음)');
     var prompt =
-      '당신은 부동산 중개사 보조 AI입니다.\n' +
-      '아래 [고객 조건]을 읽고, [매물 목록] 중에서 조건에 가장 부합하는 매물 2개를 골라주세요.\n' +
-      '반드시 JSON 배열로만 응답하세요. JSON 외 텍스트 절대 금지.\n\n' +
-      '[고객 조건]\n' + custInfo + '\n\n' +
-      '[매물 목록]\n' + JSON.stringify(propList) + '\n\n' +
-      '응답 형식 (JSON 배열, 2개):\n' +
+      '당신은 부동산 중개사 보조 AI입니다.\n'+
+      '아래 [고객 조건]을 읽고, [매물 목록] 중 조건에 가장 부합하는 매물 2개를 골라주세요.\n'+
+      '반드시 JSON 배열로만 응답하세요. JSON 외 텍스트 절대 금지.\n\n'+
+      '[고객 조건]\n'+custInfo+'\n\n'+
+      '[매물 목록]\n'+JSON.stringify(propList)+'\n\n'+
+      '응답 형식(JSON 배열 2개):\n'+
       '[{"id":"매물ID","reason":"추천 이유 한 줄 (30자 이내)"},{"id":"매물ID","reason":"추천 이유 한 줄 (30자 이내)"}]';
 
     setLoading('AI가 조건을 분석하고 있습니다...');
 
     // 5. API 호출
     var resp = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 300,
-        messages: [{ role: 'user', content: prompt }]
+        model:'claude-sonnet-4-20250514', max_tokens:300,
+        messages:[{role:'user', content:prompt}]
       })
     });
     var data = await resp.json();
@@ -6460,40 +6512,26 @@ async function runAiPropRecommend(custId) {
     var recs = JSON.parse(m[0]);
     if (!Array.isArray(recs) || recs.length === 0) throw new Error('추천 결과 없음');
 
-    // 6. 결과 렌더링
-    var html = '<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">';
-    recs.slice(0, 2).forEach(function(rec) {
-      var p = allProps.find(function(x){ return x.id === rec.id; });
-      if (!p) return;
-      var priceStr = (p.price !== undefined && p.price !== null && p.price !== '')
-        ? formatPriceComma(p.price) : '-';
-      var cid = custId.replace(/'/g, "\\'");
-      var pid = p.id.replace(/'/g, "\\'");
-      html +=
-        '<div onclick="aiRecommendCardClick(\'' + cid + '\',\'' + pid + '\')" ' +
-        'style="cursor:pointer;border:1px solid var(--border);border-radius:10px;padding:10px 12px;' +
-        'background:var(--surface);transition:border-color 0.2s,box-shadow 0.2s;" ' +
-        'onmouseenter="this.style.borderColor=\'var(--accent)\';this.style.boxShadow=\'0 2px 10px rgba(58,126,246,0.12)\'" ' +
-        'onmouseleave="this.style.borderColor=\'var(--border)\';this.style.boxShadow=\'\'">' +
-          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap;">' +
-            '<span class="tag tag-' + escapeHtml(p.georae||'') + '">' + escapeHtml(p.georae||'-') + '</span>' +
-            '<span class="tag tag-' + escapeHtml((p.type||'').replace(/\//g,'')) + '">' + escapeHtml(p.type||'-') + '</span>' +
-            '<span style="font-weight:700;font-size:13px;color:var(--accent);">' + escapeHtml(priceStr) + '</span>' +
-          '</div>' +
-          '<div style="font-size:13px;font-weight:500;margin-bottom:4px;">' + escapeHtml(p.address||'-') + '</div>' +
-          '<div style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px;">' +
-            '<span style="color:#6c47f5;font-size:12px;">\u2728</span>' + escapeHtml(rec.reason||'') +
-          '</div>' +
-        '</div>';
+    // 6. Firebase 저장 (propId, reason, 표시용 필드 함께 저장)
+    var aiRecs = recs.slice(0,2).map(function(rec){
+      var p = allProps.find(function(x){ return x.id===rec.id; });
+      return {
+        propId:  rec.id,
+        reason:  rec.reason||'',
+        address: p ? (p.address||'') : '',
+        georae:  p ? (p.georae||'')  : '',
+        type:    p ? (p.type||'')    : '',
+        price:   p && p.price!=null && p.price!=='' ? String(p.price) : ''
+      };
     });
-    html += '</div>';
-    result.innerHTML = html;
+
+    await db.collection(getCustomersCollection()).doc(custId).update({ aiRecs: aiRecs });
+    // onSnapshot이 발동하여 openCustomerDetail 재렌더링 → renderAiRecCards가 카드를 표시
 
   } catch(e) {
     result.innerHTML =
-      '<div style="padding:8px 0;color:var(--danger);font-size:13px;">추천 실패: ' +
-      escapeHtml(e && e.message ? e.message : String(e)) + '</div>';
-  } finally {
+      '<div style="padding:8px 0;color:var(--danger);font-size:13px;">추천 실패: '+
+      escapeHtml(e&&e.message?e.message:String(e))+'</div>';
     if (btn) { btn.disabled = false; btn.textContent = '다시 추천'; }
   }
 }
