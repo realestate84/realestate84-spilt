@@ -227,20 +227,16 @@
     <button class="btn btn-primary btn-sm" onclick="openCustomerForm()">＋ 문의등록</button>
   </div>
 
-  <!-- ① 고객 상세 영역 (상단) -->
-  <div class="customer-detail-area">
-    <div id="customerDetail" style="flex:1;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px;height:100%;box-sizing:border-box;"></div>
-  </div>
+  <!-- 2단 레이아웃: 좌=상세 / 우=리스트 -->
+  <div class="customer-panel-inner">
 
-  <!-- ② 검색창 + 리스트 (하단, 토글 가능) -->
-  <div class="customer-panel-body" id="customerPanelBody">
-    <!-- 토글 버튼 -->
-    <button class="customer-list-toggle-btn" onclick="toggleCustomerListPanel()" id="customerListToggleBtn">
-      <span>📋 고객 목록 <span id="customerListToggleCount" style="color:var(--accent);font-weight:700;margin-left:2px;"></span></span>
-      <span class="customer-list-toggle-arrow" id="customerListToggleArrow">▲</span>
-    </button>
-    <!-- 접히는 콘텐츠 -->
-    <div class="customer-list-content" id="customerListContent">
+    <!-- 좌: 고객 상세 -->
+    <div class="customer-detail-area">
+      <div id="customerDetail" style="overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:14px;height:100%;box-sizing:border-box;"></div>
+    </div>
+
+    <!-- 우: 검색 + 리스트 -->
+    <div class="customer-panel-body">
       <textarea id="customerSearch" class="search-input"
         placeholder="🔍 이름/연락처/메모 검색..."
         oninput="renderCustomerList()"
@@ -249,8 +245,8 @@
         <table>
           <thead>
             <tr>
-              <th style="width:30%;">이름</th>
-              <th style="width:25%;">매물종류</th>
+              <th style="width:35%;">이름</th>
+              <th style="width:30%;">매물종류</th>
               <th style="width:20%;">거래유형</th>
               <th style="width:15%;">매물</th>
             </tr>
@@ -264,6 +260,7 @@
         <div id="customerDoneList" style="display:none;"></div>
       </div>
     </div>
+
   </div>
 </div>
 
@@ -6084,8 +6081,6 @@ function renderCustomerList() {
     var doneTot   = customers.filter(function(c){ return  c.done; }).length;
     info.textContent = '진행중 ' + activeTot + '명' + (doneTot > 0 ? ' / 완료 ' + doneTot + '명' : '') + (q ? ' (검색 ' + allList.length + '명)' : '');
   }
-  // 토글 버튼 카운트 뱃지 갱신
-  updateCustomerListToggleCount(activeList.length);
 }
 
 function toggleCustomerDoneSection() {
@@ -6107,43 +6102,6 @@ function toggleCustomerDoneSection() {
     doneListEl.style.display = 'none';
     if(btn) btn.innerHTML = '✅ 완료 <span id="customerDoneCount">' + doneList.length + '</span>건 ▾';
   }
-}
-
-// ── 고객 리스트 패널 토글 (PC 패널 하단 접기/펼치기) ──
-var _customerListPanelOpen = true;
-function toggleCustomerListPanel() {
-  _customerListPanelOpen = !_customerListPanelOpen;
-  var body   = document.getElementById('customerPanelBody');
-  var arrow  = document.getElementById('customerListToggleArrow');
-  if(!body) return;
-  if(_customerListPanelOpen) {
-    body.classList.remove('list-collapsed');
-    if(arrow) arrow.style.transform = '';
-  } else {
-    body.classList.add('list-collapsed');
-    if(arrow) arrow.style.transform = 'rotate(180deg)';
-  }
-  try { localStorage.setItem('customerListPanelOpen', _customerListPanelOpen ? '1' : '0'); } catch(e){}
-}
-
-// 패널 리스트 열림 상태 복원
-window.addEventListener('DOMContentLoaded', function(){
-  try {
-    var saved = localStorage.getItem('customerListPanelOpen');
-    if(saved === '0') {
-      _customerListPanelOpen = false;
-      var body  = document.getElementById('customerPanelBody');
-      var arrow = document.getElementById('customerListToggleArrow');
-      if(body)  body.classList.add('list-collapsed');
-      if(arrow) arrow.style.transform = 'rotate(180deg)';
-    }
-  } catch(e){}
-});
-
-// 리스트 카운트 뱃지 업데이트 헬퍼
-function updateCustomerListToggleCount(count) {
-  var el = document.getElementById('customerListToggleCount');
-  if(el) el.textContent = count > 0 ? '(' + count + ')' : '';
 }
 
 function openCustomerForm(id) {
@@ -6284,8 +6242,15 @@ function deleteCustomer(id) {
   db.collection(getCustomersCollection()).doc(id).delete().then(function(){
     showToast('🗑 삭제됐어요.');
     _currentCustomerId = null;
-    renderCustomerEmpty();
-    renderCustomerList();
+    var modal = document.getElementById('customersModal');
+    var isMobileModal = modal && modal.classList.contains('active');
+    if(isMobileModal) {
+      renderCustomerEmptyModal();
+      renderCustomerListModal();
+    } else {
+      renderCustomerEmpty();
+      renderCustomerList();
+    }
   }).catch(function(e){
     alert('삭제 오류: ' + (e && e.message ? e.message : e));
   });
