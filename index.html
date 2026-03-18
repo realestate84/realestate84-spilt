@@ -118,10 +118,10 @@
     <button type="button" id="sectorBtnCommercialM" class="btn btn-sm" onclick="switchSector('commercial');closeMobileMenu()" style="flex:1;font-size:12px;">상업용</button>
     <button type="button" id="sectorBtnResidentialM" class="btn btn-outline btn-sm" onclick="switchSector('residential');closeMobileMenu()" style="flex:1;font-size:12px;">주거용</button>
   </div>
-  <button class="btn btn-primary" onclick="closeMobileMenu();setTimeout(openAddModal,200)">＋ 매물 등록</button>
+  <button class="btn btn-primary" onclick="openAddModal();closeMobileMenu()">＋ 매물 등록</button>
   <button class="btn btn-outline" onclick="openAiInputModal();closeMobileMenu()" style="background:linear-gradient(135deg,#6c47f5,#3a7ef6);color:#fff;border:none;">✨ AI 자동입력</button>
   <button class="btn btn-outline" onclick="openNoticeBoard();closeMobileMenu()">📋 게시판</button>
-  <button class="btn btn-outline" onclick="closeMobileMenu();setTimeout(openCustomers,200)">👥 고객문의</button>
+  <button class="btn btn-outline" onclick="openCustomers();closeMobileMenu()">👥 고객문의</button>
   <button class="btn btn-outline" onclick="openTodoModal();closeMobileMenu()">📝 To-do</button>
   <button class="btn btn-outline" onclick="openBannerModal();closeMobileMenu()">🏷 현수막</button>
   <button class="btn btn-outline" onclick="openMapAll();closeMobileMenu()">🗺 지도</button>
@@ -6098,13 +6098,8 @@ function toggleCustomerDoneSection() {
 function openCustomerForm(id) {
   var c = id ? getCustomerById(id) : null;
   _currentCustomerId = id || null;
-  var isMobile = window.innerWidth <= 1024;
-  var el = document.getElementById(isMobile ? 'customerDetailModal' : 'customerDetail');
+  var el = document.getElementById('customerDetail');
   if(!el) return;
-
-  var cancelFn = id
-    ? 'openCustomerDetail(\'' + id + '\''  + (isMobile ? ',false,document.getElementById(\'customerDetailModal\')' : '') + ')'
-    : (isMobile ? 'renderCustomerEmptyModal()' : 'renderCustomerEmpty()');
 
   var georaeOpts = '<option value="">선택</option><option value="매매">매매</option><option value="전세">전세</option><option value="월세">월세</option>';
   var typeOpts = '<option value="">선택</option>' + getPropTypesForSector(currentSector).map(function(t){ return '<option value="'+escapeHtml(t)+'">'+escapeHtml(t)+'</option>'; }).join('');
@@ -6114,7 +6109,7 @@ function openCustomerForm(id) {
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">'+
       '<div style="font-size:16px;font-weight:800;">'+(id?'문의 수정':'문의 등록')+'</div>'+
       '<div style="display:flex;gap:8px;">'+
-        '<button class="btn btn-outline btn-sm" onclick="'+cancelFn+'">취소</button>'+
+        (id?'<button class="btn btn-outline btn-sm" onclick="openCustomerDetail(\''+id+'\')">취소</button>':'<button class="btn btn-outline btn-sm" onclick="renderCustomerEmpty()">취소</button>')+
         '<button class="btn btn-primary btn-sm" onclick="saveCustomerForm(\''+(id||'')+'\')">저장</button>'+
       '</div>'+
     '</div>'+
@@ -6149,13 +6144,10 @@ function saveCustomerForm(id) {
     updatedAtMs: Date.now()
   };
 
-  var isMobile = window.innerWidth <= 1024;
-  var modalEl = isMobile ? document.getElementById('customerDetailModal') : null;
-
   if(id) {
     db.collection(getCustomersCollection()).doc(id).update(base).then(function(){
       showToast('✅ 저장됐어요!');
-      openCustomerDetail(id, true, modalEl);
+      openCustomerDetail(id, true);
     }).catch(function(e){
       alert('저장 오류: ' + (e && e.message ? e.message : e));
     });
@@ -6167,8 +6159,8 @@ function saveCustomerForm(id) {
     base.history = [];
     db.collection(getCustomersCollection()).add(base).then(function(ref){
       showToast('✅ 등록됐어요!');
-      openCustomerDetail(ref.id, false, modalEl);
-      if(isMobile) renderCustomerListModal(); else renderCustomerList();
+      openCustomerDetail(ref.id);
+      renderCustomerList();
     }).catch(function(e){
       alert('등록 오류: ' + (e && e.message ? e.message : e));
     });
@@ -8049,4 +8041,791 @@ async function runAiAutoFill() {
 function applyAiParsed(parsed, RES_TYPES) {
   var detectedType = parsed.type || '';
   closeAiInputModal();
-  var needSecto
+  var needSector = RES_TYPES.indexOf(detectedType) !== -1 ? 'residential' : 'commercial';
+  if(currentSector !== needSector) switchSector(needSector);
+
+  setTimeout(function(){
+    openAddModal();
+    setTimeout(function(){
+      var gs = document.getElementById('f_georae');
+      if(gs && parsed.georae) gs.value = parsed.georae;
+      updatePriceInputUI();
+      var ts = document.getElementById('f_type');
+      if(ts && detectedType) {
+        ts.value = detectedType;
+        renderCustomFieldsInForm(detectedType, null);
+        updateFormFieldVisibility(detectedType);
+      }
+
+      var fixedFields = ['price','maintenance','premium','landArea','roadShare','totalLandArea',
+        'roadArea','useZone','jimok','access','totalArea','tempArea','supplyArea','exclusiveArea',
+        'buildingUse','floors','electric','hoist','direction','parking','factoryReg',
+        'elevator','rooms','bathrooms','waterIn','drain','toilet','regOwnerName','ownerName','ownerPhone','memo'];
+      fixedFields.forEach(function(key) {
+        if(parsed[key]) { var el = document.getElementById('f_'+key); if(el) el.value = parsed[key]; }
+      });
+      if(parsed.approvalDate) { var ad = document.getElementById('f_approvalDate'); if(ad) ad.value = parsed.approvalDate; }
+
+      // 커스텀 필드
+      Object.keys(parsed).forEach(function(k) {
+        if(k.indexOf('custom__') === 0 && parsed[k]) {
+          var el = document.getElementById('fc_' + k.replace('custom__',''));
+          if(el) el.value = parsed[k];
+        }
+      });
+
+      // 주소 Geocoder 정제
+      var rawAddr = parsed.address || '';
+      if(rawAddr) {
+        var gc = new kakao.maps.services.Geocoder();
+        gc.addressSearch(rawAddr, function(result, status) {
+          var addrEl = document.getElementById('f_address');
+          if(!addrEl) return;
+          if(status === kakao.maps.services.Status.OK && result.length > 0) {
+            var full = (result[0].road_address && result[0].road_address.address_name)
+              ? result[0].road_address.address_name
+              : (result[0].address && result[0].address.address_name)
+              ? result[0].address.address_name : rawAddr;
+            addrEl.value = full;
+          } else { addrEl.value = rawAddr; }
+        });
+      }
+
+      showToast('✅ AI 자동입력 완료! 내용을 확인 후 저장하세요.');
+    }, 400);
+  }, 150);
+}
+// ── AI 자동입력 끝 ────────────────────────────
+
+// ── 공지사항 티커 ──────────────────────────
+var _DEFAULT_NOTICES = [
+  '📋 매물 등록 시 사진을 반드시 첨부해 주세요.',
+  '🔔 계약 완료 매물은 즉시 상태를 변경해 주세요.',
+  '📅 매주 월요일 오전 9시 온라인 미팅이 있습니다.',
+  '💡 AI 자동입력 기능으로 빠르게 매물을 등록하세요.',
+  '🗺 지도 기능에서 매물 위치를 한눈에 확인하세요.',
+];
+
+// Firestore에서 공지 불러오기 (없으면 기본값)
+function loadNoticesFromDB() {
+  if(!db) { startNoticeTicker(); return; }
+  db.collection('settings').doc('notices').get().then(function(doc) {
+    if(doc.exists && doc.data().list && doc.data().list.length > 0) {
+      window._noticeList = doc.data().list;
+    } else {
+      window._noticeList = _DEFAULT_NOTICES.slice();
+    }
+    startNoticeTicker();
+  }).catch(function() {
+    window._noticeList = _DEFAULT_NOTICES.slice();
+    startNoticeTicker();
+  });
+}
+
+function saveNoticesToDB() {
+  if(!db) return;
+  db.collection('settings').doc('notices').set({ list: window._noticeList || [] });
+}
+
+function startNoticeTicker() {
+  if(window._noticeTimer) clearInterval(window._noticeTimer);
+  var notices = window._noticeList || [];
+  var inner = document.getElementById('noticeInner');
+  var ticker = document.getElementById('noticeTicker');
+  if(!inner || !ticker) return;
+
+  if(notices.length === 0) {
+    ticker.style.display = 'none';
+    return;
+  }
+  ticker.style.display = '';
+  ticker.style.opacity = '';
+  ticker.style.maxHeight = '';
+
+  var idx = 0;
+  function setNotice(index, animate) {
+    var text = notices[index % notices.length];
+    if(animate) {
+      inner.style.transition = 'transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s';
+      inner.style.transform = 'translateY(-100%)';
+      inner.style.opacity = '0';
+      setTimeout(function() {
+        inner.textContent = text;
+        inner.style.transition = 'none';
+        inner.style.transform = 'translateY(100%)';
+        inner.style.opacity = '0';
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            inner.style.transition = 'transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s';
+            inner.style.transform = 'translateY(0)';
+            inner.style.opacity = '1';
+          });
+        });
+      }, 480);
+    } else {
+      inner.textContent = text;
+      inner.style.transform = 'translateY(0)';
+      inner.style.opacity = '1';
+    }
+  }
+  setNotice(0, false);
+  if(notices.length > 1) {
+    window._noticeTimer = setInterval(function() {
+      idx = (idx + 1) % notices.length;
+      setNotice(idx, true);
+    }, 4000);
+  }
+}
+
+window.closeNoticeTicker = function() {
+  var ticker = document.getElementById('noticeTicker');
+  if(ticker) {
+    ticker.style.transition = 'max-height 0.3s, opacity 0.3s';
+    ticker.style.opacity = '0';
+    ticker.style.maxHeight = '0';
+    ticker.style.paddingTop = '0';
+    ticker.style.paddingBottom = '0';
+    ticker.style.overflow = 'hidden';
+    setTimeout(function(){ ticker.style.display = 'none'; }, 320);
+  }
+  if(window._noticeTimer) clearInterval(window._noticeTimer);
+};
+
+// 설정 모달에서 사용하는 공지 관리 함수
+window.addNoticeItem = function() {
+  var input = document.getElementById('newNoticeInput');
+  if(!input) return;
+  var val = input.value.trim();
+  if(!val) return;
+  if(!window._noticeList) window._noticeList = [];
+  window._noticeList.push(val);
+  input.value = '';
+  renderSettingsPanel();
+  // 스크롤 유지
+  var sb = document.getElementById('settingsBody');
+  if(sb) setTimeout(function(){ sb.scrollTop = sb.scrollHeight; }, 50);
+};
+
+window.deleteNoticeItem = function(i) {
+  if(!window._noticeList) return;
+  window._noticeList.splice(i, 1);
+  renderSettingsPanel();
+};
+
+var _noticeDragSrcIdx = null;
+window.onNoticeDragStart = function(e) {
+  _noticeDragSrcIdx = parseInt(e.currentTarget.dataset.noticeIdx);
+  e.currentTarget.style.opacity = '0.4';
+  e.dataTransfer.effectAllowed = 'move';
+};
+window.onNoticeDragOver = function(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.style.borderColor = 'var(--accent)';
+  var scrollEl = document.getElementById('settingsBody');
+  if(!scrollEl) return;
+  var rect = scrollEl.getBoundingClientRect();
+  var edge = 44, step = 12;
+  if(e.clientY < rect.top + edge) scrollEl.scrollTop = Math.max(0, scrollEl.scrollTop - step);
+  else if(e.clientY > rect.bottom - edge) scrollEl.scrollTop = Math.min(scrollEl.scrollHeight - scrollEl.clientHeight, scrollEl.scrollTop + step);
+};
+window.onNoticeDragEnd = function(e) {
+  e.currentTarget.style.opacity = '1';
+  document.querySelectorAll('[data-notice-idx]').forEach(function(el){ el.style.borderColor = 'var(--border)'; });
+};
+window.onNoticeDrop = function(e) {
+  e.preventDefault();
+  var targetIdx = parseInt(e.currentTarget.dataset.noticeIdx);
+  if(isNaN(targetIdx) || targetIdx === _noticeDragSrcIdx || _noticeDragSrcIdx === null) return;
+  var list = window._noticeList;
+  if(!list) return;
+  var item = list.splice(_noticeDragSrcIdx, 1)[0];
+  list.splice(targetIdx, 0, item);
+  var sb = document.getElementById('settingsBody');
+  var scrollTop = sb ? sb.scrollTop : 0;
+  renderSettingsPanel();
+  if(sb) sb.scrollTop = scrollTop;
+};
+
+window.updateNoticeItem = function(i, val) {
+  if(!window._noticeList) return;
+  window._noticeList[i] = val;
+};
+
+// ── 공지사항 게시판 ──────────────────────────
+
+// URL을 클릭 가능한 링크로 변환 (XSS 방지 포함)
+function nbRenderContent(text) {
+  // 1) 특수문자 escape
+  var escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  // 2) URL 패턴을 <a> 태그로 변환
+  var urlPattern = /(https?:\/\/[^\s<>"'\u3000-\u303F\uFF00-\uFFEF]+)/g;
+  return escaped.replace(urlPattern, function(url) {
+    return '<a href="' + url + '" target="_blank" rel="noopener noreferrer" ' +
+      'style="color:var(--accent);text-decoration:underline;word-break:break-all;">' + url + '</a>';
+  });
+}
+var _nbCurrentUser = null;
+var _nbIsEditing = false;      // 현재 작성/수정 폼이 열려있는지
+var _nbOrigTitle = '';          // 폼 열릴 때 원본 제목 (변경감지용)
+var _nbOrigContent = '';        // 폼 열릴 때 원본 내용 (변경감지용)
+
+// 변경사항이 있는지 확인
+function nbHasChanges() {
+  var title = (document.getElementById('nbFormTitle').value || '');
+  var content = (document.getElementById('nbFormContent').value || '');
+  return title !== _nbOrigTitle || content !== _nbOrigContent;
+}
+
+// 작성/수정 중 취소 확인 (변경사항 있을 때만 confirm)
+function nbConfirmDiscard() {
+  if(!_nbIsEditing) return true;
+  if(!nbHasChanges()) return true;
+  return confirm('작성 중인 내용이 있습니다.\n저장하지 않고 닫으시겠습니까?');
+}
+
+// overlay 클릭 → 작성/수정 중이면 무시
+window.noticeBoardOverlayClose = function() {
+  if(_nbIsEditing) return; // 폼 열려있으면 overlay 클릭 무효
+  closeNoticeBoard();
+};
+
+// X 버튼 → 작성/수정 중이면 confirm
+window.noticeBoardXClose = function() {
+  if(_nbIsEditing) {
+    if(!nbConfirmDiscard()) return;
+    _nbIsEditing = false;
+    showNoticeBoardList();
+    return;
+  }
+  closeNoticeBoard();
+};
+
+// 게시판 열기
+window.openNoticeBoard = function() {
+  var modal = document.getElementById('noticeBoardModal');
+  if(!modal) return;
+  if(firebase && firebase.auth) {
+    var u = firebase.auth().currentUser;
+    _nbCurrentUser = u ? u.email : null;
+  }
+  _nbIsEditing = false;
+  showNoticeBoardList();
+  modal.classList.add('active');
+  pushModalState();
+};
+
+window.closeNoticeBoard = function() {
+  var modal = document.getElementById('noticeBoardModal');
+  if(!modal) return;
+  if(_modalStatePushed) { if(window.history && window.history.back) window.history.back(); return; }
+  modal.classList.remove('active');
+  _nbIsEditing = false;
+};
+
+// 목록 뷰 표시
+function showNoticeBoardList() {
+  _nbIsEditing = false;
+  document.getElementById('noticeBoardList').style.display = '';
+  document.getElementById('noticeBoardWriteBar').style.display = '';
+  document.getElementById('noticeBoardForm').style.display = 'none';
+  document.getElementById('noticeBoardDetail').style.display = 'none';
+  loadNoticeBoardPosts();
+}
+
+// Firestore에서 게시글 로드
+function loadNoticeBoardPosts() {
+  var inner = document.getElementById('noticeBoardListInner');
+  if(!inner) return;
+  inner.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text-muted);font-size:13px;">불러오는 중...</div>';
+  if(!db) { inner.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text-muted);">DB 연결 없음</div>'; return; }
+  db.collection('noticeBoard').orderBy('createdAt','desc').get().then(function(snap) {
+    if(snap.empty) {
+      inner.innerHTML = '<div style="text-align:center;padding:60px 0;color:var(--text-muted);"><div style="font-size:36px;margin-bottom:10px;">📋</div><div style="font-size:13px;">등록된 공지사항이 없습니다.</div></div>';
+      return;
+    }
+    var html = '';
+    snap.forEach(function(doc) {
+      var d = doc.data();
+      var date = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleDateString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit'}) : '';
+      var isNew = d.createdAt && (Date.now() - d.createdAt.toDate().getTime() < 3*24*60*60*1000);
+      html += '<div onclick="openNoticeBoardDetail(\''+doc.id+'\')" style="display:flex;align-items:center;gap:12px;padding:14px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;border-radius:6px;" onmouseover="this.style.background=\'rgba(58,126,246,0.04)\'" onmouseout="this.style.background=\'\'">'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">'+
+            '<span style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(d.title||'(제목 없음)')+'</span>'+
+            (isNew ? '<span style="font-size:10px;font-weight:700;color:#fff;background:var(--accent);padding:1px 6px;border-radius:10px;flex-shrink:0;">NEW</span>' : '')+
+          '</div>'+
+          '<div style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml((d.content||'').substring(0,60))+(d.content&&d.content.length>60?'...':'')+'</div>'+
+        '</div>'+
+        '<div style="font-size:11px;color:var(--text-muted);white-space:nowrap;flex-shrink:0;">'+date+'</div>'+
+      '</div>';
+    });
+    inner.innerHTML = html;
+  }).catch(function(e) {
+    inner.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--danger);font-size:13px;">불러오기 실패: '+e.message+'</div>';
+  });
+}
+
+// 상세 보기
+window.openNoticeBoardDetail = function(id) {
+  if(!db) return;
+  db.collection('noticeBoard').doc(id).get().then(function(doc) {
+    if(!doc.exists) return;
+    var d = doc.data();
+    var date = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleString('ko-KR') : '';
+    document.getElementById('nbDetailTitle').textContent = d.title || '(제목 없음)';
+    document.getElementById('nbDetailMeta').textContent = (d.authorName||d.author||'관리자') + ' · ' + date;
+    document.getElementById('nbDetailContent').innerHTML = nbRenderContent(d.content || '');
+
+    // 첨부파일 렌더링
+    var attachWrap = document.getElementById('nbDetailAttachments');
+    var attachList = document.getElementById('nbDetailAttachmentList');
+    var atts = d.attachments || [];
+    if(atts.length > 0) {
+      attachList.innerHTML = '';
+      atts.forEach(function(att, idx) {
+        var isOwner = d.author === _nbCurrentUser;
+        var ext = (att.name || '').split('.').pop().toLowerCase();
+        var canPreview = ['xlsx','xls','csv','docx','jpg','jpeg','png','gif','webp','pdf'].indexOf(ext) !== -1;
+        var item = document.createElement('div');
+        item.style.cssText = 'display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;';
+        // path를 안전하게 data-* 속성으로 저장
+        var safeUrl = att.url ? att.url.replace(/'/g,"&#39;") : '';
+        var safeName = att.name ? att.name.replace(/'/g,"&#39;") : '';
+        var safePath = att.path ? att.path.replace(/'/g,"&#39;") : '';
+        item.innerHTML =
+          '<span style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">'+
+          '<span>'+nbFileIcon(ext)+'</span>'+
+          '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+att.name+'</span>'+
+          '<span style="font-size:11px;color:var(--text-muted);flex-shrink:0;">('+( att.size > 1024*1024 ? (att.size/1024/1024).toFixed(1)+'MB' : Math.round(att.size/1024)+'KB')+')</span>'+
+          '</span>'+
+          (canPreview ? '<button data-url="'+safeUrl+'" data-name="'+safeName+'" data-path="'+safePath+'" onclick="openNbFilePreview(this.dataset.url,this.dataset.name,this.dataset.path)" class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:11px;padding:2px 8px;">👁 미리보기</button>' : '')+
+          '<a href="'+att.url+'" target="_blank" download="'+att.name+'" class="btn btn-outline btn-sm" style="flex-shrink:0;font-size:11px;padding:2px 8px;text-decoration:none;color:inherit;">⬇</a>'+
+          (isOwner ? '<button onclick="nbDeleteAttachment(\''+id+'\','+idx+')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0 2px;" title="첨부파일 삭제">✕</button>' : '');
+        attachList.appendChild(item);
+      });
+      attachWrap.style.display = '';
+    } else {
+      attachWrap.style.display = 'none';
+    }
+
+    var actions = document.getElementById('nbDetailActions');
+    if(d.author === _nbCurrentUser) {
+      actions.innerHTML =
+        '<button class="btn btn-outline btn-sm" onclick="editNoticeBoardPost(\''+id+'\')">✏️ 수정</button>'+
+        '<button class="btn btn-outline btn-sm" onclick="deleteNoticeBoardPost(\''+id+'\')" style="color:var(--danger);border-color:var(--danger);">🗑 삭제</button>';
+    } else {
+      actions.innerHTML = '';
+    }
+    document.getElementById('noticeBoardList').style.display = 'none';
+    document.getElementById('noticeBoardWriteBar').style.display = 'none';
+    document.getElementById('noticeBoardForm').style.display = 'none';
+    document.getElementById('noticeBoardDetail').style.display = 'flex';
+    document.getElementById('noticeBoardDetail').dataset.openId = id;
+  });
+};
+
+// 첨부파일 개별 삭제
+window.nbDeleteAttachment = function(docId, idx) {
+  if(!confirm('이 첨부파일을 삭제하시겠습니까?')) return;
+  db.collection('noticeBoard').doc(docId).get().then(function(doc) {
+    if(!doc.exists) return;
+    var atts = doc.data().attachments || [];
+    var removed = atts.splice(idx, 1)[0];
+    if(removed && removed.path && firebase.storage) {
+      firebase.storage().ref(removed.path).delete().catch(function(){});
+    }
+    return db.collection('noticeBoard').doc(docId).update({ attachments: atts });
+  }).then(function() {
+    showToast('📎 첨부파일이 삭제됐어요.');
+    openNoticeBoardDetail(docId);
+  }).catch(function(e) { alert('삭제 실패: '+e.message); });
+};
+
+window.closeNoticeBoardDetail = function() { showNoticeBoardList(); };
+
+// ── 첨부파일 미리보기 ──────────────────────────────────────
+
+// 파일 확장자별 아이콘
+window.nbFileIcon = function(ext) {
+  var icons = { xlsx:'📊', xls:'📊', csv:'📊', docx:'📝', doc:'📝', pdf:'📕', jpg:'🖼', jpeg:'🖼', png:'🖼', gif:'🖼', webp:'🖼', hwp:'📄', pptx:'📑', ppt:'📑', zip:'🗜', txt:'📃' };
+  return icons[ext] || '📎';
+};
+
+window.openNbFilePreview = function(url, name, storagePath) {
+  var ext = (name || '').split('.').pop().toLowerCase();
+  var overlay = document.getElementById('nbFilePreviewOverlay');
+  document.getElementById('nbPreviewFileName').textContent = name;
+  document.getElementById('nbPreviewIcon').textContent = nbFileIcon(ext);
+  document.getElementById('nbPreviewDownloadBtn').href = url;
+  document.getElementById('nbPreviewDownloadBtn').download = name;
+
+  ['nbPreviewLoading','nbPreviewExcel','nbPreviewWord','nbPreviewImage','nbPreviewIframe','nbPreviewUnsupported'].forEach(function(id){
+    document.getElementById(id).style.display = 'none';
+  });
+  document.getElementById('nbPreviewSheetTabs').style.display = 'none';
+  document.getElementById('nbPreviewSheetTabs').innerHTML = '';
+
+  overlay.style.display = 'flex';
+  var loadingEl = document.getElementById('nbPreviewLoading');
+  loadingEl.style.display = 'flex';
+  loadingEl.innerHTML = '⏳ Google Drive에서 변환 중... (10~20초 소요)';
+
+  // 이미지 — 직접 표시
+  if(['jpg','jpeg','png','gif','webp'].indexOf(ext) !== -1) {
+    loadingEl.style.display = 'none';
+    document.getElementById('nbPreviewImage').style.display = 'flex';
+    document.getElementById('nbPreviewImg').src = url;
+    return;
+  }
+
+  // PDF — iframe 직접
+  if(ext === 'pdf') {
+    loadingEl.style.display = 'none';
+    var iframePdf = document.getElementById('nbPreviewIframe');
+    iframePdf.src = url;
+    iframePdf.style.display = 'block';
+    return;
+  }
+
+  // 엑셀·워드 — Firebase Function(drivePreview) 호출
+  var officeExts = ['xlsx','xls','csv','docx','doc'];
+  if(officeExts.indexOf(ext) !== -1) {
+    var fns = firebase.app().functions('asia-northeast3');
+    var drivePreview = fns.httpsCallable('drivePreview', { timeout: 70000 });
+    drivePreview({ fileUrl: url, fileName: name })
+      .then(function(result) {
+        loadingEl.style.display = 'none';
+        var iframe = document.getElementById('nbPreviewIframe');
+        iframe.src = result.data.embedUrl;
+        iframe.style.display = 'block';
+      })
+      .catch(function(err) {
+        console.error('drivePreview 오류:', err);
+        // 폴백: Office Online Viewer
+        loadingEl.style.display = 'none';
+        var iframe = document.getElementById('nbPreviewIframe');
+        iframe.src = 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(url);
+        iframe.style.display = 'block';
+      });
+    return;
+  }
+
+  // 미지원
+  loadingEl.style.display = 'none';
+  var unsupEl = document.getElementById('nbPreviewUnsupported');
+  unsupEl.style.display = 'flex';
+  document.getElementById('nbPreviewUnsupportedDl').href = url;
+  document.getElementById('nbPreviewUnsupportedDl').download = name;
+};
+
+window.nbPreviewUnsupported = function(url, name) {
+  document.getElementById('nbPreviewLoading').style.display = 'none';
+  var el = document.getElementById('nbPreviewUnsupported');
+  el.style.display = 'flex';
+  document.getElementById('nbPreviewUnsupportedDl').href = url;
+  document.getElementById('nbPreviewUnsupportedDl').download = name;
+};
+
+window.closeNbFilePreview = function() {
+  document.getElementById('nbFilePreviewOverlay').style.display = 'none';
+  document.getElementById('nbPreviewIframe').src = '';
+  document.getElementById('nbPreviewImg').src = '';
+  document.getElementById('nbPreviewWord').innerHTML = '';
+  document.getElementById('nbPreviewExcelTable').innerHTML = '';
+};
+
+// ── 면적 단위 변환 헬퍼 ──────────────────────────────────
+// 1평 = 3.3058㎡
+window._detailAreaUnit = 'pyeong'; // 상세보기 현재 표시 단위
+
+function formatAreaVal(raw, storedUnit, displayUnit) {
+  var num = parseFloat(raw);
+  if(isNaN(num)) return raw;
+  var inPyeong = (storedUnit === 'sqm') ? num / 3.3058 : num;
+  var inSqm    = (storedUnit === 'pyeong') ? num * 3.3058 : num;
+  if(displayUnit === 'sqm') {
+    return (Math.round(inSqm * 100) / 100) + ' ㎡';
+  } else {
+    return (Math.round(inPyeong * 100) / 100) + ' 평';
+  }
+}
+
+// 등록/수정 폼 단위 토글
+window.setAreaUnit = function(field, unit) {
+  document.getElementById('f_'+field+'Unit').value = unit;
+  var btnP = document.getElementById('f_'+field+'Unit_pyeong');
+  var btnS = document.getElementById('f_'+field+'Unit_sqm');
+  if(!btnP || !btnS) return;
+  if(unit === 'pyeong') {
+    btnP.style.background = 'var(--accent)'; btnP.style.color = '#fff';
+    btnS.style.background = 'var(--surface)'; btnS.style.color = 'var(--text)';
+  } else {
+    btnS.style.background = 'var(--accent)'; btnS.style.color = '#fff';
+    btnP.style.background = 'var(--surface)'; btnP.style.color = 'var(--text)';
+  }
+  updateAreaHint(field);
+};
+
+// 입력값 옆 힌트 (반대 단위 자동 표시)
+window.updateAreaHint = function(field) {
+  var val = parseFloat(document.getElementById('f_'+field).value);
+  var unit = document.getElementById('f_'+field+'Unit').value;
+  var hint = document.getElementById('f_'+field+'_hint');
+  if(!hint) return;
+  if(isNaN(val) || val <= 0) { hint.textContent = ''; return; }
+  if(unit === 'pyeong') {
+    hint.textContent = '= ' + (Math.round(val * 3.3058 * 100) / 100) + ' ㎡';
+  } else {
+    hint.textContent = '= ' + (Math.round(val / 3.3058 * 100) / 100) + ' 평';
+  }
+};
+
+// 상세보기 토글
+window.toggleDetailAreaUnit = function(unit) {
+  window._detailAreaUnit = unit;
+  var btnP = document.getElementById('detailAreaUnitBtn_pyeong');
+  var btnS = document.getElementById('detailAreaUnitBtn_sqm');
+  if(btnP && btnS) {
+    if(unit === 'pyeong') {
+      btnP.style.background = 'var(--accent)'; btnP.style.color = '#fff';
+      btnS.style.background = 'var(--surface)'; btnS.style.color = 'var(--text)';
+    } else {
+      btnS.style.background = 'var(--accent)'; btnS.style.color = '#fff';
+      btnP.style.background = 'var(--surface)'; btnP.style.color = 'var(--text)';
+    }
+  }
+  // 현재 상세보기에 렌더된 면적 값들을 실시간 업데이트
+  document.querySelectorAll('.area-val').forEach(function(el) {
+    var raw = el.dataset.raw;
+    var storedUnit = el.dataset.unit || 'pyeong';
+    el.textContent = formatAreaVal(raw, storedUnit, unit);
+  });
+};
+
+// 첨부파일 누적 저장소
+window._nbPendingFiles = [];
+
+// 파일 추가 (누적, 중복 이름 제거)
+window.nbAddFiles = function(fileList) {
+  if(!fileList) return;
+  Array.from(fileList).forEach(function(file) {
+    var exists = window._nbPendingFiles.some(function(f){ return f.name === file.name && f.size === file.size; });
+    if(!exists) window._nbPendingFiles.push(file);
+  });
+  nbRenderFileList();
+};
+
+// 첨부파일 목록 렌더링
+window.nbRenderFileList = function() {
+  var listEl = document.getElementById('nbFormFileList');
+  if(!listEl) return;
+  listEl.innerHTML = '';
+  window._nbPendingFiles.forEach(function(file, idx) {
+    var tag = document.createElement('div');
+    tag.style.cssText = 'display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;';
+    tag.innerHTML =
+      '📄 ' + file.name +
+      ' <span style="color:var(--text-muted);font-size:11px;">(' + (file.size > 1024*1024 ? (file.size/1024/1024).toFixed(1)+'MB' : Math.round(file.size/1024)+'KB') + ')</span>' +
+      '<button onclick="nbRemovePendingFile('+idx+')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:0 2px;margin-left:2px;" title="제거">✕</button>';
+    listEl.appendChild(tag);
+  });
+};
+
+// 개별 파일 제거
+window.nbRemovePendingFile = function(idx) {
+  window._nbPendingFiles.splice(idx, 1);
+  nbRenderFileList();
+};
+
+// 작성 폼 열기
+window.openNoticeBoardWrite = function() {
+  document.getElementById('nbFormId').value = '';
+  document.getElementById('nbFormTitle').value = '';
+  document.getElementById('nbFormContent').value = '';
+  document.getElementById('nbFormFiles').value = '';
+  document.getElementById('nbFormFileList').innerHTML = '';
+  window._nbPendingFiles = [];
+  _nbOrigTitle = '';
+  _nbOrigContent = '';
+  _nbIsEditing = true;
+  document.getElementById('noticeBoardList').style.display = 'none';
+  document.getElementById('noticeBoardWriteBar').style.display = 'none';
+  document.getElementById('noticeBoardForm').style.display = 'flex';
+  document.getElementById('noticeBoardDetail').style.display = 'none';
+  setTimeout(function(){ document.getElementById('nbFormTitle').focus(); }, 100);
+};
+
+// 취소 버튼
+window.closeNoticeBoardWrite = function() {
+  if(!nbConfirmDiscard()) return;
+  _nbIsEditing = false;
+  showNoticeBoardList();
+};
+
+// 수정 폼 열기
+window.editNoticeBoardPost = function(id) {
+  if(!db) return;
+  db.collection('noticeBoard').doc(id).get().then(function(doc) {
+    if(!doc.exists) return;
+    var d = doc.data();
+    document.getElementById('nbFormId').value = id;
+    document.getElementById('nbFormTitle').value = d.title || '';
+    document.getElementById('nbFormContent').value = d.content || '';
+    document.getElementById('nbFormFiles').value = '';
+    document.getElementById('nbFormFileList').innerHTML = '';
+    window._nbPendingFiles = [];
+    _nbOrigTitle = d.title || '';
+    _nbOrigContent = d.content || '';
+    _nbIsEditing = true;
+    document.getElementById('noticeBoardList').style.display = 'none';
+    document.getElementById('noticeBoardWriteBar').style.display = 'none';
+    document.getElementById('noticeBoardForm').style.display = 'flex';
+    document.getElementById('noticeBoardDetail').style.display = 'none';
+    setTimeout(function(){ document.getElementById('nbFormTitle').focus(); }, 100);
+  });
+};
+
+
+// 저장 (신규/수정)
+window.saveNoticeBoardPost = function() {
+  var title = (document.getElementById('nbFormTitle').value || '').trim();
+  var content = (document.getElementById('nbFormContent').value || '').trim();
+  var id = document.getElementById('nbFormId').value;
+  if(!title) { alert('제목을 입력해주세요.'); document.getElementById('nbFormTitle').focus(); return; }
+  if(!content) { alert('내용을 입력해주세요.'); document.getElementById('nbFormContent').focus(); return; }
+  if(!db) return;
+  var u = firebase.auth().currentUser;
+  var filesInput = document.getElementById('nbFormFiles');
+  var files = (window._nbPendingFiles && window._nbPendingFiles.length) ? window._nbPendingFiles : (filesInput && filesInput.files ? Array.from(filesInput.files) : []);
+
+  var saveBtn = document.querySelector('#noticeBoardForm .btn-primary');
+  if(saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
+
+  function doSave(newAttachments) {
+    var data = {
+      title: title,
+      content: content,
+      author: u ? u.email : '',
+      authorName: u ? (u.displayName || u.email) : '관리자',
+    };
+    var prom;
+    if(id) {
+      data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+      prom = db.collection('noticeBoard').doc(id).get().then(function(doc) {
+        var existing = (doc.exists && doc.data().attachments) ? doc.data().attachments : [];
+        data.attachments = existing.concat(newAttachments);
+        return db.collection('noticeBoard').doc(id).update(data);
+      });
+    } else {
+      data.attachments = newAttachments;
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      prom = db.collection('noticeBoard').add(data);
+    }
+    prom.then(function() {
+      showToast(id ? '✅ 게시글이 수정됐어요!' : '✅ 게시글이 등록됐어요!');
+      _nbIsEditing = false;
+      showNoticeBoardList();
+    }).catch(function(e) {
+      alert('저장 실패: '+e.message);
+    }).finally(function() {
+      if(saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 저장'; }
+    });
+  }
+
+  if(files.length === 0) { doSave([]); return; }
+
+  var storage = firebase.storage ? firebase.storage() : null;
+  if(!storage) { alert('Firebase Storage가 초기화되지 않았습니다.'); doSave([]); return; }
+
+  var uploaded = [], done = 0;
+  files.forEach(function(file) {
+    var path = 'noticeBoard/' + Date.now() + '_' + file.name;
+    storage.ref(path).put(file).then(function(snap) {
+      return snap.ref.getDownloadURL();
+    }).then(function(url) {
+      uploaded.push({ name: file.name, url: url, size: file.size, path: path });
+      if(++done === files.length) doSave(uploaded);
+    }).catch(function(e) {
+      console.error('파일 업로드 실패:', e);
+      if(++done === files.length) doSave(uploaded);
+    });
+  });
+};
+
+// 삭제
+window.deleteNoticeBoardPost = function(id) {
+  if(!confirm('이 게시글을 삭제하시겠습니까?')) return;
+  if(!db) return;
+  db.collection('noticeBoard').doc(id).get().then(function(doc) {
+    if(doc.exists) {
+      (doc.data().attachments || []).forEach(function(att) {
+        if(att.path && firebase.storage) firebase.storage().ref(att.path).delete().catch(function(){});
+      });
+    }
+    return db.collection('noticeBoard').doc(id).delete();
+  }).then(function() {
+    showToast('🗑 게시글이 삭제됐어요.');
+    showNoticeBoardList();
+  }).catch(function(e) { alert('삭제 실패: '+e.message); });
+};
+
+// ── 시작 ──────────────────────────────────
+showLoading('데이터 불러오는 중...');
+load();
+loadCustomers();
+loadNoticesFromDB();
+
+// 스크롤 하단 근처 도달 시 다음 페이지 prefetch (600px 전에 요청)
+// window와 .table-wrap 둘 다 감지 (실제 스크롤이 table-wrap 안에서 일어날 수 있음)
+function checkListScrollForNextPage() {
+  if(listMode === 'search') return;
+  if(document.getElementById('mainScreen') && document.getElementById('mainScreen').style.display === 'none') return;
+  var scrollBottom, threshold;
+  var wrap = document.querySelector('.table-wrap');
+  var container = document.querySelector('.container');
+  if(wrap && wrap.scrollHeight > wrap.clientHeight) {
+    scrollBottom = wrap.scrollTop + wrap.clientHeight;
+    threshold = wrap.scrollHeight - 600;
+  } else if(container && container.scrollHeight > container.clientHeight) {
+    scrollBottom = container.scrollTop + container.clientHeight;
+    threshold = container.scrollHeight - 600;
+  } else {
+    scrollBottom = window.innerHeight + window.scrollY;
+    threshold = document.body.offsetHeight - 600;
+  }
+  if(scrollBottom > threshold) loadNextPage();
+}
+window.addEventListener('scroll', checkListScrollForNextPage, { passive: true });
+[document.querySelector('.table-wrap'), document.querySelector('.container')].forEach(function(el) {
+  if(el) el.addEventListener('scroll', checkListScrollForNextPage, { passive: true });
+});
+</script>
+</div><!-- /mainScreen -->
+
+<!-- PWA 서비스 워커 등록 -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('service-worker.js')
+      .then(function(reg) {
+        console.log('SW 등록 완료:', reg.scope);
+      })
+      .catch(function(err) { console.log('SW 등록 실패:', err); });
+
+    // 새 버전 감지 시 자동 새로고침
+    navigator.serviceWorker.addEventListener('message', function(e) {
+      if(e.data && e.data.type === 'SW_UPDATED') {
+        console.log('새 버전 감지:', e.data.version);
+        window.location.reload();
+      }
+    });
+  });
+}
+</script>
+</body>
+</html>
