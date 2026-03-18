@@ -123,9 +123,9 @@ th{position:relative;}
 .list-panel{flex:1;min-width:0;display:flex;flex-direction:column;position:relative;overflow:hidden;}
 .list-panel .container{height:100%;max-height:100%;overflow:hidden;}
 
-/* ── 고객문의 패널 ────────────────────────── */
+/* ── 고객문의 패널 (2단: 좌=상세 / 우=리스트) ── */
 .customer-panel{
-  width:340px;flex-shrink:0;
+  width:680px;flex-shrink:0;
   display:flex;flex-direction:column;
   border-left:1px solid var(--border);
   background:var(--surface);
@@ -139,59 +139,38 @@ th{position:relative;}
   flex-shrink:0;
 }
 
-/* 상세 영역 — 토글에 따라 flex 비율이 바뀜 */
+/* 내부 2단 래퍼 */
+.customer-panel-inner{
+  display:flex;flex:1;min-height:0;overflow:hidden;
+}
+
+/* 좌: 고객 상세 */
 .customer-detail-area{
-  flex:1;min-height:0;
+  flex:1;min-width:0;
   display:flex;flex-direction:column;
   padding:10px 12px;
   overflow:hidden;
-  transition:flex 0.25s ease;
+  border-right:1px solid var(--border);
 }
 .customer-detail-area > div{
   flex:1;min-height:0;overflow:auto;
 }
 
-/* 리스트 바디 — 기본: 고정 높이로 하단 표시 */
+/* 우: 검색 + 리스트 */
 .customer-panel-body{
+  width:340px;flex-shrink:0;
   display:flex;flex-direction:column;
-  flex-shrink:0;
-  border-top:1px solid var(--border);
   padding:8px 12px 10px;
-  gap:0;
   overflow:hidden;
-  max-height:54%;
-  transition:max-height 0.28s cubic-bezier(0.4,0,0.2,1);
-}
-.customer-panel-body.list-collapsed{
-  max-height:36px; /* 토글 버튼 높이만 */
 }
 
-/* 토글 버튼 */
-.customer-list-toggle-btn{
-  width:100%;display:flex;align-items:center;justify-content:space-between;
-  background:var(--bg);border:1px solid var(--border);border-radius:8px;
-  padding:6px 12px;font-size:12px;font-weight:600;color:var(--text-muted);
-  cursor:pointer;flex-shrink:0;margin-bottom:0;
-  transition:background 0.15s,color 0.15s;
+/* ── 고객패널 닫힘 상태 (panel-closed: splitLayout에 추가됨) ── */
+.split-layout.panel-closed .list-panel{
+  /* panel-closed 시 list-panel은 JS로 width/flex 직접 제어됨 — CSS는 보조만 */
 }
-.customer-list-toggle-btn:hover{background:rgba(58,126,246,0.06);color:var(--accent);border-color:var(--accent);}
-.customer-list-toggle-arrow{
-  font-size:10px;
-  transition:transform 0.25s ease;
-  display:inline-block;
-}
-.list-collapsed .customer-list-toggle-arrow{transform:rotate(180deg);}
 
-/* 접히는 콘텐츠 영역 */
-.customer-list-content{
-  display:flex;flex-direction:column;
-  flex:1;min-height:0;
-  overflow:hidden;
-  margin-top:8px;
-  opacity:1;
-  transition:opacity 0.2s ease;
-}
-.list-collapsed .customer-list-content{
-  opacity:0;
-  pointer-events:none;
+/* ── 공지 티커 닫힘 시 split-layout 높이 자동 보정 ── */
+#noticeTicker[style*="display: none"] ~ * .split-layout,
+#noticeTicker[style*="display:none"] ~ * .split-layout{
+  height:calc(100vh - 60px - env(safe-area-inset-top,0));
 }
