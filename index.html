@@ -3366,7 +3366,7 @@ function fillFormTypeOptions() {
 }
 function openAddModal(){
   editingId=null; currentPhotos=[];
-  document.getElementById('formModalTitle').textContent='매물 등록';
+  document.getElementById('formModalTitle').textContent='매물 등록 (' + (currentSector === SECTOR_COMMERCIAL ? '상업용' : '주거용') + ')';
   fillFormTypeOptions();
   clearForm(); renderPhotoPreview(); restoreMemoHeight();
   renderCustomFieldsInForm('', null);
@@ -3393,7 +3393,7 @@ function openEditModal(id){
 }
 function _openEditModalWithData(id, p){
   editingId=id;
-  document.getElementById('formModalTitle').textContent='매물 수정';
+  document.getElementById('formModalTitle').textContent='매물 수정 (' + (currentSector === SECTOR_COMMERCIAL ? '상업용' : '주거용') + ')';
   fillFormTypeOptions();
   document.getElementById('f_georae').value=p.georae||'';
   document.getElementById('f_type').value=p.type||'';
