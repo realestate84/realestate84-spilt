@@ -178,3 +178,26 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── 좁은 PC(1025~1400px): customersModal 내부 좌=상세 / 우=리스트 순서 ── */
+@media(min-width:1025px) and (max-width:1400px){
+  #customersModal .modal{
+    max-width:1100px;
+    width:95vw;
+    height:92vh;
+  }
+  /* modal-body flex 방향 유지하되, customer-left/right 순서를 뒤집어 좌:상세 / 우:리스트 */
+  #customersModal .modal-body{
+    flex-direction:row-reverse;
+  }
+  /* 상세(customer-right)가 왼쪽에 오므로 flex:1 그대로 유지 */
+  #customersModal .customer-right{
+    flex:1;
+    min-width:0;
+  }
+  /* 검색+리스트(customer-left)는 고정 폭으로 우측에 */
+  #customersModal .customer-left{
+    width:300px !important;
+    flex-shrink:0;
+  }
+}
