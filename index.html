@@ -812,8 +812,21 @@
     </div>
     <div class="modal-body" id="noticeBoardBody" style="padding:0;display:flex;flex-direction:column;height:100%;min-height:0;">
       <!-- 목록 뷰 -->
-      <div id="noticeBoardList" style="flex:1;overflow-y:auto;padding:16px 20px;">
-        <div id="noticeBoardListInner"></div>
+      <div id="noticeBoardList" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+        <!-- 검색바 -->
+        <div style="padding:14px 20px 0 20px;flex-shrink:0;">
+          <div style="position:relative;">
+            <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;">🔍</span>
+            <input type="text" id="nbSearchInput" class="form-input"
+              placeholder="제목, 내용, 첨부파일명으로 검색..."
+              oninput="onNbSearchInput()"
+              style="padding-left:34px;padding-right:36px;width:100%;box-sizing:border-box;font-size:13px;">
+            <button id="nbSearchClear" onclick="clearNbSearch()" title="검색 초기화"
+              style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted);line-height:1;padding:0;">✕</button>
+          </div>
+          <div id="nbSearchStatus" style="font-size:12px;color:var(--text-muted);margin-top:6px;min-height:18px;"></div>
+        </div>
+        <div id="noticeBoardListInner" style="flex:1;overflow-y:auto;padding:4px 20px 16px 20px;"></div>
       </div>
       <!-- 작성 버튼 (관리자) -->
       <div id="noticeBoardWriteBar" style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
@@ -8595,6 +8608,13 @@ window.openNoticeBoard = function() {
     _nbCurrentUser = u ? u.email : null;
   }
   _nbIsEditing = false;
+  _nbAllPosts = null;
+  var inp = document.getElementById('nbSearchInput');
+  if(inp) inp.value = '';
+  var clearBtn = document.getElementById('nbSearchClear');
+  if(clearBtn) clearBtn.style.display = 'none';
+  var statusEl = document.getElementById('nbSearchStatus');
+  if(statusEl) statusEl.textContent = '';
   showNoticeBoardList();
   modal.classList.add('active');
   pushModalState();
@@ -8611,12 +8631,15 @@ window.closeNoticeBoard = function() {
 // 목록 뷰 표시
 function showNoticeBoardList() {
   _nbIsEditing = false;
-  document.getElementById('noticeBoardList').style.display = '';
+  document.getElementById('noticeBoardList').style.display = 'flex';
   document.getElementById('noticeBoardWriteBar').style.display = '';
   document.getElementById('noticeBoardForm').style.display = 'none';
   document.getElementById('noticeBoardDetail').style.display = 'none';
   loadNoticeBoardPosts();
 }
+
+// 캐시된 전체 게시글 목록
+var _nbAllPosts = null;
 
 // Firestore에서 게시글 로드
 function loadNoticeBoardPosts() {
@@ -8625,31 +8648,111 @@ function loadNoticeBoardPosts() {
   inner.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text-muted);font-size:13px;">불러오는 중...</div>';
   if(!db) { inner.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text-muted);">DB 연결 없음</div>'; return; }
   db.collection('noticeBoard').orderBy('createdAt','desc').get().then(function(snap) {
-    if(snap.empty) {
-      inner.innerHTML = '<div style="text-align:center;padding:60px 0;color:var(--text-muted);"><div style="font-size:36px;margin-bottom:10px;">📋</div><div style="font-size:13px;">등록된 공지사항이 없습니다.</div></div>';
-      return;
-    }
-    var html = '';
-    snap.forEach(function(doc) {
-      var d = doc.data();
-      var date = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleDateString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit'}) : '';
-      var isNew = d.createdAt && (Date.now() - d.createdAt.toDate().getTime() < 3*24*60*60*1000);
-      html += '<div onclick="openNoticeBoardDetail(\''+doc.id+'\')" style="display:flex;align-items:center;gap:12px;padding:14px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;border-radius:6px;" onmouseover="this.style.background=\'rgba(58,126,246,0.04)\'" onmouseout="this.style.background=\'\'">'+
-        '<div style="flex:1;min-width:0;">'+
-          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">'+
-            '<span style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(d.title||'(제목 없음)')+'</span>'+
-            (isNew ? '<span style="font-size:10px;font-weight:700;color:#fff;background:var(--accent);padding:1px 6px;border-radius:10px;flex-shrink:0;">NEW</span>' : '')+
-          '</div>'+
-          '<div style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml((d.content||'').substring(0,60))+(d.content&&d.content.length>60?'...':'')+'</div>'+
-        '</div>'+
-        '<div style="font-size:11px;color:var(--text-muted);white-space:nowrap;flex-shrink:0;">'+date+'</div>'+
-      '</div>';
-    });
-    inner.innerHTML = html;
+    _nbAllPosts = [];
+    snap.forEach(function(doc) { _nbAllPosts.push({ id: doc.id, data: doc.data() }); });
+    renderNoticeBoardList();
   }).catch(function(e) {
     inner.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--danger);font-size:13px;">불러오기 실패: '+e.message+'</div>';
   });
 }
+
+// 검색어 하이라이트
+function nbHighlight(text, keyword) {
+  if(!keyword || !text) return escapeHtml(text || '');
+  var escaped = escapeHtml(text);
+  var safe = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return escaped.replace(new RegExp('(' + safe + ')', 'gi'),
+    '<mark style="background:rgba(58,126,246,0.22);color:inherit;border-radius:2px;padding:0 1px;">$1</mark>');
+}
+
+// 목록 렌더링 (검색 적용)
+function renderNoticeBoardList() {
+  var inner = document.getElementById('noticeBoardListInner');
+  var statusEl = document.getElementById('nbSearchStatus');
+  if(!inner) return;
+  var keyword = ((document.getElementById('nbSearchInput') || {}).value || '').trim();
+
+  if(!_nbAllPosts || _nbAllPosts.length === 0) {
+    inner.innerHTML = '<div style="text-align:center;padding:60px 0;color:var(--text-muted);"><div style="font-size:36px;margin-bottom:10px;">📋</div><div style="font-size:13px;">등록된 공지사항이 없습니다.</div></div>';
+    if(statusEl) statusEl.textContent = '';
+    return;
+  }
+
+  var matchedFiles = {};
+  var posts = _nbAllPosts;
+
+  if(keyword) {
+    var kw = keyword.toLowerCase();
+    posts = _nbAllPosts.filter(function(p) {
+      var d = p.data;
+      if((d.title||'').toLowerCase().indexOf(kw) !== -1) return true;
+      if((d.content||'').toLowerCase().indexOf(kw) !== -1) return true;
+      if(d.attachments && d.attachments.length) {
+        var hit = d.attachments.filter(function(a){ return (a.name||'').toLowerCase().indexOf(kw) !== -1; });
+        if(hit.length) { matchedFiles[p.id] = hit.map(function(a){ return a.name; }); return true; }
+      }
+      return false;
+    });
+    if(statusEl) {
+      statusEl.innerHTML = posts.length
+        ? '<span style="color:var(--accent);font-weight:600;">'+posts.length+'개</span> 검색됨 &nbsp;·&nbsp; <span style="color:var(--text-muted);">제목 · 내용 · 첨부파일명</span>'
+        : '';
+    }
+  } else {
+    if(statusEl) statusEl.textContent = '';
+  }
+
+  if(posts.length === 0) {
+    inner.innerHTML = '<div style="text-align:center;padding:60px 0;color:var(--text-muted);"><div style="font-size:32px;margin-bottom:10px;">🔍</div><div style="font-size:13px;">검색 결과가 없습니다.</div><div style="font-size:12px;margin-top:6px;">다른 키워드로 검색해보세요.</div></div>';
+    return;
+  }
+
+  var html = '';
+  posts.forEach(function(p) {
+    var d = p.data;
+    var date = d.createdAt ? new Date(d.createdAt.toDate()).toLocaleDateString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit'}) : '';
+    var isNew = d.createdAt && (Date.now() - d.createdAt.toDate().getTime() < 3*24*60*60*1000);
+    var titleHtml   = keyword ? nbHighlight(d.title||'(제목 없음)', keyword) : escapeHtml(d.title||'(제목 없음)');
+    var snippet     = (d.content||'').substring(0,80) + ((d.content||'').length > 80 ? '...' : '');
+    var snippetHtml = keyword ? nbHighlight(snippet, keyword) : escapeHtml(snippet);
+    var filesHtml   = '';
+    if(keyword && matchedFiles[p.id]) {
+      filesHtml = '<div style="font-size:11px;color:var(--accent);margin-top:3px;">📎 '+
+        matchedFiles[p.id].map(function(fn){ return nbHighlight(fn, keyword); }).join('&nbsp;&nbsp;')+'</div>';
+    }
+    html += '<div onclick="openNoticeBoardDetail(\''+p.id+'\')" style="display:flex;align-items:center;gap:12px;padding:14px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;border-radius:6px;" onmouseover="this.style.background=\'rgba(58,126,246,0.04)\'" onmouseout="this.style.background=\'\'">'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">'+
+          '<span style="font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+titleHtml+'</span>'+
+          (isNew ? '<span style="font-size:10px;font-weight:700;color:#fff;background:var(--accent);padding:1px 6px;border-radius:10px;flex-shrink:0;">NEW</span>' : '')+
+        '</div>'+
+        '<div style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+snippetHtml+'</div>'+
+        filesHtml+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--text-muted);white-space:nowrap;flex-shrink:0;">'+date+'</div>'+
+    '</div>';
+  });
+  inner.innerHTML = html;
+}
+
+// 검색어 입력 핸들러
+window.onNbSearchInput = function() {
+  var inp = document.getElementById('nbSearchInput');
+  var clearBtn = document.getElementById('nbSearchClear');
+  if(clearBtn) clearBtn.style.display = (inp && inp.value) ? '' : 'none';
+  renderNoticeBoardList();
+};
+
+// 검색 초기화
+window.clearNbSearch = function() {
+  var inp = document.getElementById('nbSearchInput');
+  if(inp) { inp.value = ''; inp.focus(); }
+  var clearBtn = document.getElementById('nbSearchClear');
+  if(clearBtn) clearBtn.style.display = 'none';
+  var statusEl = document.getElementById('nbSearchStatus');
+  if(statusEl) statusEl.textContent = '';
+  renderNoticeBoardList();
+};
 
 // 상세 보기
 window.openNoticeBoardDetail = function(id) {
@@ -9010,6 +9113,7 @@ window.saveNoticeBoardPost = function() {
     prom.then(function() {
       showToast(id ? '✅ 게시글이 수정됐어요!' : '✅ 게시글이 등록됐어요!');
       _nbIsEditing = false;
+      _nbAllPosts = null;
       showNoticeBoardList();
     }).catch(function(e) {
       alert('저장 실패: '+e.message);
@@ -9051,6 +9155,7 @@ window.deleteNoticeBoardPost = function(id) {
     return db.collection('noticeBoard').doc(id).delete();
   }).then(function() {
     showToast('🗑 게시글이 삭제됐어요.');
+    _nbAllPosts = null;
     showNoticeBoardList();
   }).catch(function(e) { alert('삭제 실패: '+e.message); });
 };
