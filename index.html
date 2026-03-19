@@ -37,7 +37,16 @@
 <body>
 
 <!-- 로그인 화면 -->
-<div id="loginScreen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);">
+<!-- 초기 로딩 스피너 (Firebase 인증 확인 중) -->
+<div id="authLoadingScreen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);position:fixed;inset:0;z-index:99999;">
+  <div style="text-align:center;">
+    <div style="font-family:'Nanum Gothic',sans-serif;font-size:20px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px;">새롬부동산</div>
+    <div style="width:36px;height:36px;border:3px solid var(--border);border-top:3px solid var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto;"></div>
+  </div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg);}}</style>
+
+<div id="loginScreen" style="display:none;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);">
   <div class="login-card" style="background:#fff;border-radius:16px;padding:40px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.1);">
     <div style="text-align:center;margin-bottom:28px;">
       <div style="font-family:'Nanum Gothic',sans-serif;font-size:22px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px;">새롬부동산</div>
@@ -1604,12 +1613,22 @@ auth = firebase.auth();
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(function() {
   // 로그인 상태 감지
   auth.onAuthStateChanged(function(user) {
+    // 초기 로딩 스피너 숨기기
+    var authLoader = document.getElementById('authLoadingScreen');
+    if(authLoader) authLoader.style.display = 'none';
+
     if(user) {
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('mainScreen').style.display = 'flex';
       updateSectorUI();
       renderAdvSearchPanel();
       loadFieldSettings(function(){ load(); loadCustomers(); });
+
+      // Google 로그인 사용자라면 캘린더 토큰 자동 발급 시도
+      if(user.providerData && user.providerData.some(function(p){ return p.providerId === 'google.com'; })) {
+        _calAutoInitOnOpen = true; // 달력 열 때 자동 연결 시도 플래그
+        calSilentAuth();           // 팝업 없이 조용히 토큰 획득 시도
+      }
     } else {
       document.getElementById('loginScreen').style.display = 'flex';
       document.getElementById('mainScreen').style.display = 'none';
@@ -1619,7 +1638,17 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(function() {
 
 function doGoogleLogin() {
   var provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider).then(function() { appendActivityLog('로그인'); }).catch(function(e) {
+  // 캘린더 scope 함께 요청 → 로그인 한 번으로 캘린더 자동 연결
+  provider.addScope('https://www.googleapis.com/auth/calendar');
+  auth.signInWithPopup(provider).then(function(result) {
+    appendActivityLog('로그인');
+    // 로그인 시 캘린더 토큰 즉시 저장
+    if(result.credential) {
+      _calAccessToken = result.credential.accessToken;
+      _calTokenExpiry = Date.now() + 3500 * 1000;
+      try { localStorage.setItem('_calToken', JSON.stringify({ t: _calAccessToken, e: _calTokenExpiry })); } catch(e){}
+    }
+  }).catch(function(e) {
     document.getElementById('loginErr').textContent = '구글 로그인에 실패했습니다.';
   });
 }
@@ -9202,6 +9231,9 @@ var _calEvents = [];          // 이번 달 일정 캐시
 var _calCalendars = [];       // 캘린더 목록
 var _calVisibility = {};      // { calId: true/false }
 var _calAccessToken = null;   // OAuth 액세스 토큰
+var _calTokenExpiry = 0;      // 토큰 만료 시각 (ms)
+var _calAutoInitOnOpen = false; // 달력 열 때 자동 연결 시도 여부
+var _calRefreshTimer = null;  // 자동 갱신 타이머
 var _calPopupEventId = null;  // 팝업에 표시 중인 이벤트 id
 var _calColors = [            // 기본 색상 팔레트
   '#4285f4','#0f9d58','#f4b400','#db4437','#ab47bc',
@@ -9218,26 +9250,72 @@ function loadGisScript(cb) {
   document.head.appendChild(s);
 }
 
-// ── 토큰 요청 ────────────────────────────────────────────
+// ── 토큰 localStorage 저장/복원 ─────────────────────────
+function calSaveToken(token, expiresIn) {
+  _calAccessToken = token;
+  _calTokenExpiry = Date.now() + (expiresIn || 3500) * 1000;
+  try { localStorage.setItem('_calToken', JSON.stringify({ t: _calAccessToken, e: _calTokenExpiry })); } catch(e){}
+  // 만료 55분 후 자동 갱신 예약
+  if(_calRefreshTimer) clearTimeout(_calRefreshTimer);
+  _calRefreshTimer = setTimeout(function(){ calSilentAuth(); }, Math.max(0, _calTokenExpiry - Date.now() - 60000));
+}
+
+function calLoadToken() {
+  try {
+    var raw = localStorage.getItem('_calToken');
+    if(!raw) return false;
+    var obj = JSON.parse(raw);
+    if(!obj.t || !obj.e) return false;
+    if(Date.now() > obj.e) { localStorage.removeItem('_calToken'); return false; } // 만료
+    _calAccessToken = obj.t;
+    _calTokenExpiry = obj.e;
+    // 남은 시간에 맞춰 갱신 타이머 설정
+    if(_calRefreshTimer) clearTimeout(_calRefreshTimer);
+    _calRefreshTimer = setTimeout(function(){ calSilentAuth(); }, Math.max(0, _calTokenExpiry - Date.now() - 60000));
+    return true;
+  } catch(e) { return false; }
+}
+
+// ── 조용한 토큰 발급 (팝업 없이) ───────────────────────
+function calSilentAuth() {
+  loadGisScript(function() {
+    if(!_calClientId) return;
+    try {
+      var tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: _calClientId,
+        scope: 'https://www.googleapis.com/auth/calendar',
+        callback: function(resp) {
+          if(resp.error || !resp.access_token) return;
+          calSaveToken(resp.access_token, resp.expires_in || 3500);
+          // 이미 달력 모달이 열려있고 캘린더 목록이 없으면 로드
+          var modal = document.getElementById('calendarModal');
+          if(modal && modal.classList.contains('active') && !_calCalendars.length) {
+            document.getElementById('calAuthBar').style.display = 'none';
+            calFetchCalendars();
+          }
+        }
+      });
+      tokenClient.requestAccessToken({ prompt: '' }); // 팝업 없이 시도
+    } catch(e) {}
+  });
+}
+
+// ── 토큰 요청 (버튼 클릭 시, 팝업 허용) ─────────────────
 function calRequestAuth() {
   loadGisScript(function() {
-    var clientId = '382904420257-' + 'YOUR_OAUTH_CLIENT_ID_SUFFIX.apps.googleusercontent.com';
-    // Firebase 프로젝트의 OAuth 2.0 클라이언트 ID를 사용
-    // Google Cloud Console → API 및 서비스 → 사용자 인증 정보에서 확인
-    // 현재 Firebase 프로젝트: realestate84-3574f
-    // 아래 client_id를 실제 값으로 교체하세요
+    if(!_calClientId) { showToast('⚠️ OAuth 클라이언트 ID가 설정되지 않았습니다.'); return; }
     var tokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: _calClientId || clientId,
+      client_id: _calClientId,
       scope: 'https://www.googleapis.com/auth/calendar',
       callback: function(resp) {
         if(resp.error) { showToast('⚠️ 구글 캘린더 연결 실패: ' + resp.error); return; }
-        _calAccessToken = resp.access_token;
+        calSaveToken(resp.access_token, resp.expires_in || 3500);
         document.getElementById('calAuthBar').style.display = 'none';
         showToast('✅ 구글 캘린더 연결됐어요!');
         calFetchCalendars();
       }
     });
-    tokenClient.requestAccessToken({ prompt: '' });
+    tokenClient.requestAccessToken({ prompt: 'consent' });
   });
 }
 
@@ -9247,7 +9325,18 @@ function calFetchCalendars() {
   showCalLoading(true);
   fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
     headers: { Authorization: 'Bearer ' + _calAccessToken }
-  }).then(function(r){ return r.json(); }).then(function(data) {
+  }).then(function(r){
+    if(r.status === 401) {
+      // 토큰 만료 → 삭제 후 재발급 시도
+      _calAccessToken = null; _calTokenExpiry = 0;
+      try { localStorage.removeItem('_calToken'); } catch(e){}
+      calSilentAuth();
+      showCalLoading(false);
+      return null;
+    }
+    return r.json();
+  }).then(function(data) {
+    if(!data) return;
     _calCalendars = (data.items || []).filter(function(c){ return c.selected !== false; });
     _calCalendars.forEach(function(c, i) {
       if(!_calVisibility.hasOwnProperty(c.id)) _calVisibility[c.id] = true;
@@ -9769,18 +9858,30 @@ window.openCalendarModal = function() {
   pushModalState();
   renderCalGrid();
   renderCalSideList();
-  // 이미 토큰 있으면 바로 데이터 로드, 없으면 안내바 표시
-  if(_calAccessToken) {
+
+  // 1순위: 메모리에 토큰 있음 → 바로 로드
+  if(_calAccessToken && Date.now() < _calTokenExpiry) {
+    document.getElementById('calAuthBar').style.display = 'none';
     calFetchCalendars();
-  } else {
-    var bar = document.getElementById('calAuthBar');
-    if(bar) { bar.style.display = 'flex'; }
-    // Firebase Google 로그인 사용자라면 자동 시도
-    var u = firebase && firebase.auth ? firebase.auth().currentUser : null;
-    if(u) {
-      document.getElementById('calAuthMsg').textContent = '📅 구글 캘린더 연동을 위해 권한이 필요합니다.';
-    }
+    return;
   }
+  // 2순위: localStorage에 유효한 토큰 있음 → 복원 후 로드
+  if(calLoadToken()) {
+    document.getElementById('calAuthBar').style.display = 'none';
+    calFetchCalendars();
+    return;
+  }
+  // 3순위: Google 로그인 사용자면 팝업 없이 조용히 토큰 재발급 시도
+  var u = firebase && firebase.auth ? firebase.auth().currentUser : null;
+  var isGoogleUser = u && u.providerData && u.providerData.some(function(p){ return p.providerId === 'google.com'; });
+  if(isGoogleUser) {
+    document.getElementById('calAuthBar').style.display = 'none';
+    calSilentAuth();
+    return;
+  }
+  // 4순위: 연결 버튼 표시
+  var bar = document.getElementById('calAuthBar');
+  if(bar) bar.style.display = 'flex';
 };
 
 window.closeCalendarModal = function() {
