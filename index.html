@@ -1064,7 +1064,7 @@
           <div style="padding:8px 0;text-align:center;font-size:12px;font-weight:600;color:#3a7ef6;">토</div>
         </div>
         <!-- 날짜 그리드 -->
-        <div id="calGrid" style="flex:1;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;overflow-y:auto;min-height:0;"></div>
+        <div id="calGrid" style="flex:1;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:120px;overflow-y:auto;min-height:0;"></div>
       </div>
 
       <!-- 사이드패널: 일정 목록 -->
@@ -9310,7 +9310,7 @@ function renderCalGrid() {
   var cells = '';
   // 이전 달 빈칸
   for(var i=0;i<firstDay;i++){
-    cells += '<div style="min-height:80px;background:var(--bg);opacity:0.4;border-right:1px solid var(--border);border-bottom:1px solid var(--border);"></div>';
+    cells += '<div style="height:120px;background:var(--bg);opacity:0.4;border-right:1px solid var(--border);border-bottom:1px solid var(--border);"></div>';
   }
   for(var d=1;d<=lastDate;d++){
     var ds = _calYear + '-' + String(_calMonth+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
@@ -9335,7 +9335,7 @@ function renderCalGrid() {
       evHtml += '<div style="font-size:10px;color:var(--text-muted);padding-left:4px;cursor:pointer;" onclick="event.stopPropagation();calSelectDay(\''+ds+'\')">+' + (dayEvents.length-MAX_SHOW) + '개 더보기</div>';
     }
     cells += '<div onclick="openCalendarEventForm(\''+ds+'\')" '+
-      'style="min-height:80px;padding:4px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;position:relative;'+
+      'style="height:120px;padding:4px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;position:relative;overflow:hidden;'+
       (isToday ? 'background:rgba(58,126,246,0.06);' : 'background:var(--surface);')+
       'transition:background 0.12s;" '+
       'onmouseover="this.style.background=\''+(isToday?'rgba(58,126,246,0.10)':'rgba(58,126,246,0.03)')+'\'" '+
@@ -9351,7 +9351,7 @@ function renderCalGrid() {
   var total = firstDay + lastDate;
   var remain = total % 7 ? 7 - (total%7) : 0;
   for(var j=0;j<remain;j++){
-    cells += '<div style="min-height:80px;background:var(--bg);opacity:0.4;border-right:1px solid var(--border);border-bottom:1px solid var(--border);"></div>';
+    cells += '<div style="height:120px;background:var(--bg);opacity:0.4;border-right:1px solid var(--border);border-bottom:1px solid var(--border);"></div>';
   }
   grid.innerHTML = cells;
 }
