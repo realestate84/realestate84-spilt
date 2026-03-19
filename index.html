@@ -6327,18 +6327,25 @@ function openCustomerDetail(id, keep, targetEl) {
       '<div style="font-size:13px;line-height:1.8;white-space:pre-wrap;">'+(c.memo?linkifyMemo(c.memo):'<span class="muted">메모 없음</span>')+'</div>'+
     '</div>'+
 
-    '<div class="detail-section">'+
-      '<div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between;">'+
-        '<span>✨ AI 추천매물</span>'+
-        '<button id="aiRecommendBtn" class="btn btn-sm" onclick="runAiPropRecommend(\''+id+'\')" '+
-          'style="background:linear-gradient(135deg,#6c47f5,#3a7ef6);color:#fff;border:none;font-size:11px;padding:4px 12px;">'+
-          (c.aiRecs && c.aiRecs.length ? '다시 추천' : '추천 받기')+
-        '</button>'+
-      '</div>'+
-      '<div id="aiRecommendResult" style="margin-top:8px;">'+
-        renderAiRecCards(c, id)+
-      '</div>'+
-    '</div>'+
+    (function(){
+      var collapsed = !!(c.aiRecsCollapsed);
+      var hasRecs   = !!(c.aiRecs && c.aiRecs.length);
+      return '<div class="detail-section">'+
+        '<div class="detail-section-title" style="display:flex;align-items:center;justify-content:space-between;">'+
+          '<span style="display:flex;align-items:center;gap:6px;cursor:pointer;" onclick="toggleAiRecSection(\''+id+'\')" >'+
+            '<span style="font-size:11px;color:var(--text-muted);transition:transform 0.2s;display:inline-block;transform:'+(collapsed?'rotate(-90deg)':'rotate(0deg)')+'">▼</span>'+
+            '✨ AI 추천매물'+
+          '</span>'+
+          '<button id="aiRecommendBtn" class="btn btn-sm" onclick="runAiPropRecommend(\''+id+'\')" '+
+            'style="background:linear-gradient(135deg,#6c47f5,#3a7ef6);color:#fff;border:none;font-size:11px;padding:4px 12px;">'+
+            (hasRecs ? '다시 추천' : '추천 받기')+
+          '</button>'+
+        '</div>'+
+        '<div id="aiRecommendResult" style="margin-top:8px;'+(collapsed?'display:none;':'')+'">'+
+          renderAiRecCards(c, id)+
+        '</div>'+
+      '</div>';
+    }())+
 
     '<div class="detail-section"><div class="detail-section-title">🏠 고객에게 보여준 매물</div>'+
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">'+
@@ -6402,7 +6409,7 @@ function renderAiRecCards(c, custId) {
   return html;
 }
 
-// AI 추천 카드 이벤트 바인딩 (openCustomerDetail 렌더링 후 호출)
+// ── AI 추천 카드 이벤트 바인딩 ──
 function bindAiRecCardEvents() {
   var result = document.getElementById('aiRecommendResult');
   if (!result) return;
@@ -6424,6 +6431,25 @@ function bindAiRecCardEvents() {
   });
 }
 
+// ── AI 추천 섹션 토글 ──
+function toggleAiRecSection(custId) {
+  var result = document.getElementById('aiRecommendResult');
+  var c = getCustomerById(custId);
+  if (!result || !c) return;
+
+  var nowCollapsed = result.style.display === 'none';
+  // 화살표 회전
+  var arrow = document.querySelector('[onclick*="toggleAiRecSection"] span');
+  if (arrow) arrow.style.transform = nowCollapsed ? 'rotate(0deg)' : 'rotate(-90deg)';
+  // 컨텐츠 토글
+  result.style.display = nowCollapsed ? '' : 'none';
+  // Firebase 저장
+  var newVal = !nowCollapsed; // 지금 접는 중이면 true
+  db.collection(getCustomersCollection()).doc(custId)
+    .update({ aiRecsCollapsed: newVal })
+    .catch(function(){});
+}
+
 async function runAiPropRecommend(custId) {
   var c = getCustomerById(custId);
   if (!c) return;
@@ -6443,8 +6469,17 @@ async function runAiPropRecommend(custId) {
 
   if (btn) { btn.disabled = true; btn.textContent = '분석 중...'; }
 
-  // 다시 추천: Firebase에서 기존 추천 먼저 초기화
-  db.collection(getCustomersCollection()).doc(custId).update({ aiRecs: [] }).catch(function(){});
+  // 접혀 있으면 펼치기
+  if (result.style.display === 'none') {
+    result.style.display = '';
+    var arrow = document.querySelector('[onclick*="toggleAiRecSection"] span');
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
+  }
+
+  // 기존 추천 초기화 (다시 추천)
+  db.collection(getCustomersCollection()).doc(custId)
+    .update({ aiRecs: [], aiRecsCollapsed: false })
+    .catch(function(){});
 
   setLoading('매물 목록을 불러오는 중...');
 
@@ -6469,7 +6504,7 @@ async function runAiPropRecommend(custId) {
       return;
     }
 
-    // 3. 매물 요약
+    // 3. 매물 요약 (핵심 필드만)
     var propList = candidates.map(function(p){
       return {
         id: p.id, address: p.address||'', georae: p.georae||'', type: p.type||'',
@@ -6512,7 +6547,7 @@ async function runAiPropRecommend(custId) {
     var recs = JSON.parse(m[0]);
     if (!Array.isArray(recs) || recs.length === 0) throw new Error('추천 결과 없음');
 
-    // 6. Firebase 저장 (propId, reason, 표시용 필드 함께 저장)
+    // 6. Firebase 저장 (표시용 필드 함께 저장 → 오프라인/느린 네트워크에서도 표시 가능)
     var aiRecs = recs.slice(0,2).map(function(rec){
       var p = allProps.find(function(x){ return x.id===rec.id; });
       return {
@@ -6525,8 +6560,9 @@ async function runAiPropRecommend(custId) {
       };
     });
 
-    await db.collection(getCustomersCollection()).doc(custId).update({ aiRecs: aiRecs });
-    // onSnapshot이 발동하여 openCustomerDetail 재렌더링 → renderAiRecCards가 카드를 표시
+    // 저장 → onSnapshot 발동 → openCustomerDetail 재렌더링 → renderAiRecCards가 카드 복원
+    await db.collection(getCustomersCollection()).doc(custId)
+      .update({ aiRecs: aiRecs, aiRecsCollapsed: false });
 
   } catch(e) {
     result.innerHTML =
