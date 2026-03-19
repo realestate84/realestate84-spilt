@@ -9514,7 +9514,7 @@ function renderCalWeekGrid() {
 
   var header = document.getElementById('calDayHeader');
   if(header) {
-    header.style.gridTemplateColumns = 'repeat('+days+',1fr)';
+    header.style.gridTemplateColumns = 'repeat('+days+',minmax(0,1fr))';
     var hHtml = '';
     for(var i=0;i<days;i++) {
       var hd = new Date(sd); hd.setDate(sd.getDate()+i);
@@ -9530,8 +9530,8 @@ function renderCalWeekGrid() {
   // 그리드 구성 (시간 컬럼 없이 날짜별 컬럼)
   var grid = document.getElementById('calGrid');
   if(!grid) return;
-  grid.style.gridTemplateColumns = 'repeat('+days+',1fr)';
-  grid.style.gridAutoRows = 'auto';
+  grid.style.gridTemplateColumns = 'repeat('+days+',minmax(0,1fr))';
+  grid.style.gridAutoRows = '1fr';
 
   // 날짜별 이벤트 맵
   var evMap = {};
@@ -9555,14 +9555,14 @@ function renderCalWeekGrid() {
         var title = ev.summary || '(제목 없음)';
         var time  = ev.start.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}) : '종일';
         evHtml += '<div onclick="event.stopPropagation();showCalEventPopup(\''+escapeHtml(ev.id)+'\',event)" title="'+escapeHtml(title)+'" '+
-          'style="font-size:11px;padding:3px 6px;border-radius:5px;margin-bottom:3px;cursor:pointer;background:'+ev._calColor+';color:#fff;line-height:1.5;word-break:keep-all;">'+
-          '<div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escapeHtml(title)+'</div>'+
+          'style="font-size:11px;padding:3px 6px;border-radius:5px;margin-bottom:3px;cursor:pointer;background:'+ev._calColor+';color:#fff;line-height:1.5;word-break:break-all;overflow-wrap:break-word;">'+
+          '<div style="font-weight:600;white-space:normal;word-break:break-all;">'+escapeHtml(title)+'</div>'+
           '<div style="opacity:0.85;font-size:10px;">'+time+'</div>'+
         '</div>';
       });
     }
     cells += '<div onclick="openCalendarEventForm(\''+cds+'\')" '+
-      'style="min-height:180px;padding:6px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;'+
+      'style="min-height:180px;padding:6px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;overflow:hidden;'+
       (isToday?'background:rgba(58,126,246,0.05);':'background:var(--surface);')+'transition:background 0.12s;" '+
       'onmouseover="this.style.background=\''+(isToday?'rgba(58,126,246,0.09)':'rgba(58,126,246,0.03)')+'\'" '+
       'onmouseout="this.style.background=\''+(isToday?'rgba(58,126,246,0.05)':'var(--surface)')+'\'"'+
