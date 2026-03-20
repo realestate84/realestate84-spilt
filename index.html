@@ -251,10 +251,11 @@
       <table>
         <thead>
           <tr>
-            <th style="width:30%;">이름</th>
-            <th style="width:25%;">매물종류</th>
-            <th style="width:20%;">거래유형</th>
-            <th style="width:15%;">매물</th>
+            <th style="width:25%;">이름</th>
+            <th style="width:20%;">매물종류</th>
+            <th style="width:15%;">거래유형</th>
+            <th style="width:10%;">매물</th>
+            <th style="width:30%;">등록일시</th>
           </tr>
         </thead>
         <tbody id="customerListBody"></tbody>
@@ -948,10 +949,11 @@
           <table>
             <thead>
               <tr>
-                <th style="width:30%;">이름</th>
-                <th style="width:25%;">매물종류</th>
-                <th style="width:20%;">거래유형</th>
-                <th style="width:15%;">매물</th>
+                <th style="width:25%;">이름</th>
+                <th style="width:20%;">매물종류</th>
+                <th style="width:15%;">거래유형</th>
+                <th style="width:10%;">매물</th>
+                <th style="width:30%;">등록일시</th>
               </tr>
             </thead>
             <tbody id="customerListBodyModal"></tbody>
@@ -2766,7 +2768,12 @@ function openSitesModal() {
 
 function closeSitesModal() {
   document.getElementById('sitesModal').classList.remove('active');
-  if (_modalStatePushed) { _modalStatePushed = false; if (window.history && window.history.back) window.history.back(); }
+  // history.back() 대신 replaceState로 modal state만 정리
+  // → 외부 링크가 history에 쌓여있어도 절대 외부로 이동하지 않음
+  if (_modalStatePushed) {
+    _modalStatePushed = false;
+    try { window.history.replaceState(null, '', window.location.href); } catch(e) {}
+  }
 }
 
 document.addEventListener('click', function(e) {
@@ -6182,14 +6189,16 @@ function renderCustomerListModal() {
   var activeList = allList.filter(function(c){ return !c.done; });
   var doneList   = allList.filter(function(c){ return  c.done; });
   body.innerHTML = activeList.length === 0
-    ? '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">없습니다.</td></tr>'
+    ? '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">없습니다.</td></tr>'
     : activeList.map(function(c){
         var selected = (_currentCustomerId === c.id);
+        var dateStr = (c.createdDate||'-') + (c.createdTime ? ' ' + c.createdTime : '');
         return '<tr onclick="openCustomerDetailModal(\''+c.id+'\')" style="cursor:pointer;'+(selected?'background:rgba(58,126,246,0.06);':'')+'">' +
           '<td style="font-weight:600;">' + escapeHtml(c.name||'-') + '</td>'+
           '<td class="muted">' + escapeHtml(c.custType||'-') + '</td>'+
           '<td class="muted">' + escapeHtml(c.custGeorae||'-') + '</td>'+
           '<td class="muted" style="text-align:center;">' + (c.shownProps||[]).length + '</td>'+
+          '<td class="muted" style="font-size:11px;">' + escapeHtml(dateStr) + '</td>'+
         '</tr>';
       }).join('');
   if(info) info.textContent = '진행중 ' + activeList.length + '명 / 완료 ' + doneList.length + '명';
@@ -6243,15 +6252,17 @@ function renderCustomerEmpty() {
 }
 
 function _renderCustomerRows(list) {
-  if(list.length === 0) return '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">없습니다.</td></tr>';
+  if(list.length === 0) return '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">없습니다.</td></tr>';
   return list.map(function(c){
     var shownCnt = (c.shownProps||[]).length;
     var selected = (_currentCustomerId === c.id);
+    var dateStr = (c.createdDate||'-') + (c.createdTime ? ' ' + c.createdTime : '');
     return '<tr onclick="openCustomerDetail(\''+c.id+'\')" style="cursor:pointer;'+(selected?'background:rgba(58,126,246,0.06);':'')+'">' +
       '<td style="font-weight:600;'+(c.done?'color:var(--text-muted);text-decoration:line-through;':'')+'">'+escapeHtml(c.name||'-')+'</td>'+
       '<td class="muted">'+escapeHtml(c.custType||'-')+'</td>'+
       '<td class="muted">'+escapeHtml(c.custGeorae||'-')+'</td>'+
       '<td class="muted" style="text-align:center;">'+shownCnt+'</td>'+
+      '<td class="muted" style="font-size:11px;">'+escapeHtml(dateStr)+'</td>'+
     '</tr>';
   }).join('');
 }
