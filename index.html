@@ -244,10 +244,10 @@
   <!-- ② 검색창 + 리스트 (우측) -->
   <div class="customer-panel-body">
     <div style="position:relative;margin-bottom:8px;">
-      <textarea id="customerSearch" class="search-input"
+      <input type="text" id="customerSearch" class="search-input"
         placeholder="🔍 이름/연락처/메모 검색..."
         oninput="renderCustomerList();_toggleCustomerSearchClear('customerSearch','customerSearchClear')"
-        style="height:34px;min-height:34px;max-height:34px;padding:6px 28px 6px 10px;font-size:12px;resize:none;margin-bottom:0;width:100%;box-sizing:border-box;overflow:hidden;"></textarea>
+        style="padding:6px 28px 6px 10px;font-size:12px;width:100%;box-sizing:border-box;">
       <button id="customerSearchClear" onclick="_clearCustomerSearch('customerSearch','customerSearchClear',renderCustomerList)"
         style="display:none;position:absolute;right:6px;top:6px;background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted);line-height:1;padding:0;" title="검색 초기화">✕</button>
     </div>
@@ -946,10 +946,10 @@
     <div class="modal-body" style="padding:16px;display:flex;gap:12px;overflow:hidden;min-height:0;">
       <div class="customer-left" style="width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;min-height:0;">
         <div style="position:relative;">
-          <textarea id="customerSearchModal" class="search-input"
+          <input type="text" id="customerSearchModal" class="search-input"
             placeholder="🔍 이름/연락처/메모 검색..."
             oninput="renderCustomerListModal();_toggleCustomerSearchClear('customerSearchModal','customerSearchClearModal')"
-            style="height:34px;min-height:34px;max-height:34px;padding:6px 28px 6px 10px;font-size:12px;resize:none;width:100%;box-sizing:border-box;overflow:hidden;"></textarea>
+            style="padding:6px 28px 6px 10px;font-size:12px;width:100%;box-sizing:border-box;">
           <button id="customerSearchClearModal" onclick="_clearCustomerSearch('customerSearchModal','customerSearchClearModal',renderCustomerListModal)"
             style="display:none;position:absolute;right:6px;top:6px;background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted);line-height:1;padding:0;" title="검색 초기화">✕</button>
         </div>
