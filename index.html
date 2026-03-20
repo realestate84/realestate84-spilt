@@ -243,10 +243,14 @@
 
   <!-- ② 검색창 + 리스트 (우측) -->
   <div class="customer-panel-body">
-    <textarea id="customerSearch" class="search-input"
-      placeholder="🔍 이름/연락처/메모 검색..."
-      oninput="renderCustomerList()"
-      style="height:15px;min-height:15px;max-height:80px;padding:6px 10px;font-size:12px;resize:vertical;margin-bottom:8px;"></textarea>
+    <div style="position:relative;margin-bottom:8px;">
+      <textarea id="customerSearch" class="search-input"
+        placeholder="🔍 이름/연락처/메모 검색..."
+        oninput="renderCustomerList();_toggleCustomerSearchClear('customerSearch','customerSearchClear')"
+        style="height:15px;min-height:15px;max-height:80px;padding:6px 28px 6px 10px;font-size:12px;resize:vertical;margin-bottom:0;width:100%;box-sizing:border-box;"></textarea>
+      <button id="customerSearchClear" onclick="_clearCustomerSearch('customerSearch','customerSearchClear',renderCustomerList)"
+        style="display:none;position:absolute;right:6px;top:6px;background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted);line-height:1;padding:0;" title="검색 초기화">✕</button>
+    </div>
     <div class="table-wrap" style="flex:1;min-height:0;">
       <table>
         <thead>
@@ -941,10 +945,14 @@
     </div>
     <div class="modal-body" style="padding:16px;display:flex;gap:12px;overflow:hidden;min-height:0;">
       <div class="customer-left" style="width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;min-height:0;">
-        <textarea id="customerSearchModal" class="search-input"
-          placeholder="🔍 이름/연락처/메모 검색..."
-          oninput="renderCustomerListModal()"
-          style="height:15px;min-height:15px;max-height:80px;padding:6px 10px;font-size:12px;resize:vertical;"></textarea>
+        <div style="position:relative;">
+          <textarea id="customerSearchModal" class="search-input"
+            placeholder="🔍 이름/연락처/메모 검색..."
+            oninput="renderCustomerListModal();_toggleCustomerSearchClear('customerSearchModal','customerSearchClearModal')"
+            style="height:15px;min-height:15px;max-height:80px;padding:6px 28px 6px 10px;font-size:12px;resize:vertical;width:100%;box-sizing:border-box;"></textarea>
+          <button id="customerSearchClearModal" onclick="_clearCustomerSearch('customerSearchModal','customerSearchClearModal',renderCustomerListModal)"
+            style="display:none;position:absolute;right:6px;top:6px;background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted);line-height:1;padding:0;" title="검색 초기화">✕</button>
+        </div>
         <div class="table-wrap" style="flex:1;min-height:0;">
           <table>
             <thead>
@@ -6174,6 +6182,21 @@ function renderCustomerEmptyModal() {
       '<div style="font-size:28px;margin-bottom:10px;">👥</div>'+
       '<div style="font-size:13px;">왼쪽 목록에서 고객을 선택하거나, 상단에서 고객을 등록하세요.</div>'+
     '</div>';
+}
+
+// ── 고객 검색창 X 버튼 헬퍼 ─────────────────────────────
+function _toggleCustomerSearchClear(inputId, btnId) {
+  var input = document.getElementById(inputId);
+  var btn   = document.getElementById(btnId);
+  if(!input || !btn) return;
+  btn.style.display = (input.value||'').length > 0 ? 'block' : 'none';
+}
+function _clearCustomerSearch(inputId, btnId, renderFn) {
+  var input = document.getElementById(inputId);
+  var btn   = document.getElementById(btnId);
+  if(input) { input.value = ''; }
+  if(btn)   { btn.style.display = 'none'; }
+  if(renderFn) renderFn();
 }
 
 function renderCustomerListModal() {
