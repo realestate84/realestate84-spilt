@@ -6527,8 +6527,12 @@ function openCustomerDetail(id, keep, targetEl) {
     '<div class="detail-section"><div class="detail-section-title">🏠 고객에게 보여준 매물</div>'+
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">'+
         '<div style="position:relative;max-width:520px;min-width:240px;flex:1;">'+
-          '<input id="customerShownPropSearch" class="form-input" placeholder="주소, 번호, 종류, 가격, 메모, 소유자 등 모든 항목 검색" style="width:100%;font-size:12px;padding:6px 10px;" autocomplete="off" oninput="updateCustomerShownSuggestions(\''+id+'\')">'+
-          '<div id="customerShownPropSuggestions" style="position:absolute;left:0;right:0;top:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:4px;box-shadow:0 6px 18px rgba(0,0,0,0.08);max-height:260px;overflow-auto;font-size:12px;z-index:30;display:none;"></div>'+
+          '<input id="customerShownPropSearch" class="form-input" placeholder="주소, 번호, 종류, 가격, 메모, 소유자 등 모든 항목 검색" style="width:100%;font-size:12px;padding:6px 10px;" autocomplete="off"'+
+            ' oninput="updateCustomerShownSuggestions(\''+id+'\')"'+
+            ' onkeyup="updateCustomerShownSuggestions(\''+id+'\')"'+
+            ' oncompositionend="updateCustomerShownSuggestions(\''+id+'\')"'+
+            ' onblur="setTimeout(function(){hideShownSuggestions()},150)">'+
+          '<div id="customerShownPropSuggestions" style="position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.08);max-height:260px;overflow-y:auto;font-size:12px;z-index:9999;display:none;"></div>'+
         '</div>'+
         '<button class="btn btn-primary btn-sm" onclick="addShownPropertyToCustomer(\''+id+'\')">추가</button>'+
         '<button class="btn btn-outline btn-sm" onclick="openMapAllForCustomer(\''+id+'\')" style="white-space:nowrap;">🗺 지도에서 찾기</button>'+
@@ -6811,14 +6815,28 @@ function renderCustomerShownProps(custId) {
   });
 }
 
+function hideShownSuggestions() {
+  var box = document.getElementById('customerShownPropSuggestions');
+  if(box) { box.style.display = 'none'; box.innerHTML = ''; }
+}
+
+function _positionShownSuggestionsBox() {
+  var input = document.getElementById('customerShownPropSearch');
+  var box   = document.getElementById('customerShownPropSuggestions');
+  if(!input || !box) return;
+  var rect = input.getBoundingClientRect();
+  box.style.top   = (rect.bottom + 4) + 'px';
+  box.style.left  = rect.left + 'px';
+  box.style.width = rect.width + 'px';
+}
+
 function updateCustomerShownSuggestions(custId) {
   var input = document.getElementById('customerShownPropSearch');
   var box = document.getElementById('customerShownPropSuggestions');
   if(!input || !box) return;
   var q = (input.value||'').trim();
   if(!q) {
-    box.style.display = 'none';
-    box.innerHTML = '';
+    hideShownSuggestions();
     return;
   }
 
@@ -6828,9 +6846,21 @@ function updateCustomerShownSuggestions(custId) {
   var already = {};
   (c.shownProps||[]).forEach(function(pid){ already[pid] = true; });
 
+  // fixed 좌표 계산 후 표시 (버그1 방어: overflow:auto 클리핑 우회)
+  _positionShownSuggestionsBox();
+
   // 로딩 표시
   box.innerHTML = '<div style="padding:8px 10px;font-size:12px;color:var(--text-muted);">검색 중...</div>';
   box.style.display = 'block';
+
+  // customerDetail 스크롤 시 드롭다운 위치 재계산
+  var detailEl = document.getElementById('customerDetail');
+  if(detailEl && !detailEl._shownSuggestScrollBound) {
+    detailEl._shownSuggestScrollBound = true;
+    detailEl.addEventListener('scroll', function() {
+      if(box.style.display !== 'none') _positionShownSuggestionsBox();
+    }, { passive: true });
+  }
 
   function renderCandidates(allProps) {
     var candidates = allProps.filter(function(p){
@@ -6839,8 +6869,7 @@ function updateCustomerShownSuggestions(custId) {
     }).slice(0, 15);
 
     if(candidates.length === 0) {
-      box.style.display = 'none';
-      box.innerHTML = '';
+      hideShownSuggestions();
       return;
     }
     box.innerHTML = candidates.map(function(p){
@@ -6853,6 +6882,7 @@ function updateCustomerShownSuggestions(custId) {
         '<div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+escapeHtml(sub)+'</div>'+
       '</div>';
     }).join('');
+    _positionShownSuggestionsBox(); // 결과 렌더 후 다시 위치 보정
     box.style.display = 'block';
   }
 
@@ -6867,8 +6897,7 @@ function updateCustomerShownSuggestions(custId) {
         renderCandidates(allProps);
       })
       .catch(function(){
-        box.style.display = 'none';
-        box.innerHTML = '';
+        hideShownSuggestions();
       });
   }
 }
@@ -6896,9 +6925,8 @@ function commitAddShownProperty(custId, propId, fromPicker) {
   }).then(function(){
     showToast('✅ 매물을 추가했어요!');
     var input = document.getElementById('customerShownPropSearch');
-    var box = document.getElementById('customerShownPropSuggestions');
     if(input) input.value = '';
-    if(box) { box.style.display = 'none'; box.innerHTML=''; }
+    hideShownSuggestions();
   }).catch(function(e){
     alert('추가 오류: ' + (e && e.message ? e.message : e));
   });
