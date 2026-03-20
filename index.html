@@ -972,9 +972,14 @@
 
 <div id="mapAllModal" onmousedown="_mapModalDragStart(event)" onmouseup="_mapModalDragEnd(event)">
   <div class="modal">
-    <div class="modal-header">
+    <div class="modal-header" style="flex-wrap:wrap;gap:6px;">
       <div class="modal-title">📍 전체 매물 지도</div>
       <button class="modal-close" onclick="closeMapAll()">×</button>
+      <!-- 선택모드 배너: JS에서 display 토글만 함. DOM에 항상 존재(버그5,6 방어) -->
+      <div id="mapSelectModeBanner" style="display:none;width:100%;background:#ebf3ff;border:1px solid #3a7ef6;border-radius:8px;padding:8px 14px;font-size:13px;color:#1a4fa0;box-sizing:border-box;align-items:center;justify-content:space-between;gap:8px;">
+        <span>📍 <strong>매물 선택 모드</strong> — 마커를 클릭하면 선택 버튼이 나타납니다</span>
+        <button onclick="cancelMapSelectMode()" style="border:none;background:none;cursor:pointer;font-size:18px;color:#1a4fa0;line-height:1;flex-shrink:0;padding:0 4px;">✕</button>
+      </div>
     </div>
     <div class="modal-body" style="padding:16px;flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;">
       <!-- 필터 체크박스 -->
@@ -2452,6 +2457,15 @@ function switchSector(sector) {
   _modalStatePushed = false;
   if(document.getElementById('detailModal') && document.getElementById('detailModal').classList.contains('active')) _closeDetailModalImpl();
   if(document.getElementById('formModal') && document.getElementById('formModal').classList.contains('active')) closeFormModal();
+  // 버그B 방어: 섹터 전환 시 지도 모달도 닫고 선택모드 초기화 (섹터 다른 매물 마커 혼용 방지)
+  if(document.getElementById('mapAllModal') && document.getElementById('mapAllModal').classList.contains('active')) {
+    _resetMapSelectMode();
+    document.getElementById('mapAllModal').classList.remove('active');
+  }
+  // 달력 모달도 닫기 (섹터 전환 시 일관성 유지)
+  if(document.getElementById('calendarModal') && document.getElementById('calendarModal').classList.contains('active')) {
+    document.getElementById('calendarModal').classList.remove('active');
+  }
   // 패널 방식: 섹터 전환 시 고객 패널 타이틀 업데이트
   var titleEl = document.getElementById('customerPanelTitle');
   if(titleEl) titleEl.textContent = '👥 고객문의 (' + (sector === SECTOR_COMMERCIAL ? '상업용' : '주거용') + ')';
@@ -6517,6 +6531,7 @@ function openCustomerDetail(id, keep, targetEl) {
           '<div id="customerShownPropSuggestions" style="position:absolute;left:0;right:0;top:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:4px;box-shadow:0 6px 18px rgba(0,0,0,0.08);max-height:260px;overflow-auto;font-size:12px;z-index:30;display:none;"></div>'+
         '</div>'+
         '<button class="btn btn-primary btn-sm" onclick="addShownPropertyToCustomer(\''+id+'\')">추가</button>'+
+        '<button class="btn btn-outline btn-sm" onclick="openMapAllForCustomer(\''+id+'\')" style="white-space:nowrap;">🗺 지도에서 찾기</button>'+
       '</div>'+
       '<div id="customerShownList" style="display:flex;flex-direction:column;gap:8px;"></div>'+
     '</div>'+
@@ -7714,6 +7729,20 @@ var _mapObj = null;
 var _mapMarkers = [];
 // 모달 닫았다 다시 열 때 복원용 (페이지 새로고침 시 초기화, 메모리만 사용)
 var _mapAllLastLat = null, _mapAllLastLng = null, _mapAllLastLevel = null;
+
+// ── 지도 선택모드 (고객상세 → 지도에서 매물 찾기) ──────────────
+// active: 선택모드 여부 / custId: 추가 대상 고객 / sector: 선택 시점 섹터 고정(버그7 방어)
+var _mapSelectMode = { active: false, custId: null, sector: null };
+
+// 모든 닫기 경로에서 반드시 이 함수 하나만 호출 → 플래그 잔류 원천 차단(버그1 방어)
+function _resetMapSelectMode() {
+  _mapSelectMode.active = false;
+  _mapSelectMode.custId = null;
+  _mapSelectMode.sector = null;
+  var banner = document.getElementById('mapSelectModeBanner');
+  if (banner) banner.style.display = 'none';
+}
+
 var _georaeColor = {'매매':'#3a7ef6','전세':'#6c47f5','월세':'#f0a030'};
 var _typeColor   = {'토지':'#2eab7a','공장창고':'#e06830','상가/사무실':'#e04a5a','아파트':'#20aac8','빌라':'#9b59b6','상가주택':'#e67700','원룸':'#20aac8','1.5룸':'#e91e8c','투룸':'#9c27b0','오피스텔':'#ff9800','절대농지':'#4caf50','단독주택':'#795548','펜션':'#e91e63','건물':'#607d8b'};
 
@@ -7740,9 +7769,11 @@ function openPropertyFromMap(id) {
   openDetail(id);
 }
 
-function openMapAll() {
-  if(typeof kakao === 'undefined') { alert('카카오 지도가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.'); return; }
-  if(properties.length === 0) { alert('등록된 매물이 없습니다.'); return; }
+// ── 지도 모달 공통 코어 (버그2,4 방어: guard 조건 + 지도 초기화를 단일 함수로)
+// 반환값: true = 모달 정상 열림 / false = guard에 걸려 열리지 않음
+function _openMapCore() {
+  if(typeof kakao === 'undefined') { alert('카카오 지도가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.'); return false; }
+  if(properties.length === 0) { alert('등록된 매물이 없습니다.'); return false; }
   document.querySelectorAll('.map-chk').forEach(function(c){ c.checked = true; });
   window._mapDepFilterOn = true;
   var depBtn = document.getElementById('btnMapDepFilter');
@@ -7893,32 +7924,55 @@ function openMapAll() {
             if(list.length === 1) {
               var p = list[0];
               var color = _georaeColor[p.georae] || '#3a7ef6';
-              content.style.cursor = 'pointer';
-              content.innerHTML =
+              var px = (p.price!==undefined&&p.price!==null&&p.price!=='')?formatPriceComma(p.price):'';
+              if(p.georae==='월세'&&p.monthlyRent!=null&&p.monthlyRent!=='') px+=(px?' / ':'')+formatMonthlyRentComma(p.monthlyRent);
+              var infoHtml =
                 '<div class="mi-title" style="color:'+color+'">No.'+(p.propNo||'-')+' '+p.georae+' / '+p.type+'</div>'+
                 '<div class="mi-addr">📍 '+(p.address||'-')+'</div>'+
-                (function(){ var px=(p.price!==undefined&&p.price!==null&&p.price!=='')?formatPriceComma(p.price):''; if(p.georae==='월세'&&p.monthlyRent!=null&&p.monthlyRent!=='') px+=(px?' / ':'')+formatMonthlyRentComma(p.monthlyRent); return px?('<div class="mi-price">💰 '+px+'</div>'):''; })()+
-                (p.landArea?'<div style="font-size:12px;color:var(--text-muted)">토지 '+p.landArea+'평</div>':'')+
-                '<div style="margin-top:8px;text-align:center;font-size:12px;color:'+color+';font-weight:600;">▶ 클릭하면 상세보기</div>';
-              content.onclick = function() {
-                if(window._mapClickTimer){clearTimeout(window._mapClickTimer);window._mapClickTimer=null;}
-                openDetail(p.id);
-              };
+                (px?('<div class="mi-price">💰 '+px+'</div>'):'')+
+                (p.landArea?'<div style="font-size:12px;color:var(--text-muted)">토지 '+p.landArea+'평</div>':'');
+
+              if(_mapSelectMode.active) {
+                // ── 선택모드: content 자체 onclick 없애고 선택 버튼만 표시 (버그3 방어)
+                content.style.cursor = 'default';
+                content.innerHTML = infoHtml +
+                  '<button onclick="event.stopPropagation();selectPropertyFromMap(\''+p.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" '+
+                  'style="width:100%;margin-top:8px;padding:8px;background:#3a7ef6;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">'+
+                  '✅ 이 매물 선택</button>';
+                content.onclick = null;
+              } else {
+                // ── 일반모드: 기존 동작 그대로
+                content.style.cursor = 'pointer';
+                content.innerHTML = infoHtml +
+                  '<div style="margin-top:8px;text-align:center;font-size:12px;color:'+color+';font-weight:600;">▶ 클릭하면 상세보기</div>';
+                content.onclick = function() {
+                  if(window._mapClickTimer){clearTimeout(window._mapClickTimer);window._mapClickTimer=null;}
+                  openDetail(p.id);
+                };
+              }
             } else {
               // Step 3: 모바일 화면 높이에 맞게 max-height 동적 계산
               var listMaxH = window.innerWidth < 600
                 ? Math.min(Math.round(window.innerHeight * 0.35), 320) + 'px'
                 : '240px';
               content.style.minWidth = '240px';
+
+              // 그룹 팝업: 선택모드 여부에 따라 각 행 동작 분기 (버그3 방어)
+              var rowItems = list.slice().sort(function(a,b){ return (Number(b.propNo)||0)-(Number(a.propNo)||0); }).map(function(p){
+                var px2 = (p.price!==undefined&&p.price!==null&&p.price!=='') ? formatPriceComma(p.price) : '';
+                if(p.georae==='월세'&&p.monthlyRent!=null&&p.monthlyRent!=='') px2 += (px2?' / ':'') + formatMonthlyRentComma(p.monthlyRent);
+                var line = 'No.'+(p.propNo||'-')+' '+p.type+' '+p.georae+' '+(px2||'-');
+                var safeId = p.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+                var onclickAttr = _mapSelectMode.active
+                  ? 'event.stopPropagation();selectPropertyFromMap(\''+safeId+'\')'
+                  : 'openPropertyFromMap(\''+safeId+'\')';
+                return '<div class="map-property-item" onclick="'+onclickAttr+'" style="padding:8px 12px;cursor:pointer;font-size:12px;color:#333;border-bottom:1px solid #eee;background:#fff;" onmouseover="this.style.background=\'#3a7ef6\';this.style.color=\'#fff\';" onmouseout="this.style.background=\'#fff\';this.style.color=\'#333\';">'+escapeHtml(line)+'</div>';
+              }).join('');
+
               content.innerHTML =
-                '<div style="padding:8px 12px;font-weight:600;font-size:13px;color:#1a1a1a;border-bottom:1px solid #e5e7eb;background:#fff;border-radius:10px 10px 0 0;">이 주소 매물 '+list.length+'건</div>'+
+                '<div style="padding:8px 12px;font-weight:600;font-size:13px;color:#1a1a1a;border-bottom:1px solid #e5e7eb;background:#fff;border-radius:10px 10px 0 0;">이 주소 매물 '+list.length+'건'+(_mapSelectMode.active?' <span style="font-size:11px;color:#3a7ef6;">(클릭해서 선택)</span>':'')+'</div>'+
                 '<div id="mapGroupList" style="max-height:'+listMaxH+';overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;background:#fff;color:#333;border-radius:0 0 10px 10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);">'+
-                list.slice().sort(function(a,b){ return (Number(b.propNo)||0)-(Number(a.propNo)||0); }).map(function(p){
-                  var px = (p.price!==undefined&&p.price!==null&&p.price!=='') ? formatPriceComma(p.price) : '';
-                  if(p.georae==='월세'&&p.monthlyRent!=null&&p.monthlyRent!=='') px += (px?' / ':'') + formatMonthlyRentComma(p.monthlyRent);
-                  var line = 'No.'+(p.propNo||'-')+' '+p.type+' '+p.georae+' '+(px||'-');
-                  return '<div class="map-property-item" onclick="openPropertyFromMap(\''+p.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="padding:8px 12px;cursor:pointer;font-size:12px;color:#333;border-bottom:1px solid #eee;background:#fff;" onmouseover="this.style.background=\'#3a7ef6\';this.style.color=\'#fff\';" onmouseout="this.style.background=\'#fff\';this.style.color=\'#333\';">'+escapeHtml(line)+'</div>';
-                }).join('')+
+                rowItems+
                 '</div>';
               // Step 1: 휠(PC) 및 터치(모바일) 이벤트가 지도로 전달되지 않도록 차단
               content.addEventListener('wheel', function(ev) { ev.stopPropagation(); }, false);
@@ -7954,6 +8008,73 @@ function openMapAll() {
       if(el) el.textContent = '매물 로드 중 오류가 발생했습니다.';
     });
   }, 300);
+  return true; // 정상 열림
+}
+
+// 헤더 🗺 지도 버튼: 기존과 완전히 동일하게 동작
+function openMapAll() {
+  _resetMapSelectMode(); // 혹시 남아있는 선택모드 플래그 초기화 후 열기
+  _openMapCore();
+}
+
+// ── 고객상세 → 지도에서 매물 찾기 ──────────────────────────────
+function openMapAllForCustomer(custId) {
+  // _openMapCore() 성공 후에만 플래그 세팅 (버그2 방어: 조기 return 시 오염 없음)
+  var opened = _openMapCore();
+  if (!opened) return;
+
+  _mapSelectMode.active = true;
+  _mapSelectMode.custId = custId;
+  _mapSelectMode.sector = currentSector; // 버그7 방어: 선택 시점 섹터 고정
+
+  // 배너 표시 (HTML에 항상 존재하므로 null 불가 - 버그5,6 방어)
+  var banner = document.getElementById('mapSelectModeBanner');
+  if (banner) banner.style.display = 'flex';
+}
+
+// 선택모드 취소 버튼
+function cancelMapSelectMode() {
+  _resetMapSelectMode();
+  closeMapAll();
+}
+
+// 지도에서 매물 선택 완료
+function selectPropertyFromMap(propId) {
+  if (!_mapSelectMode.active) return; // 비선택모드면 무시 (방어 코드)
+
+  var custId      = _mapSelectMode.custId;
+  var savedSector = _mapSelectMode.sector; // 버그7 방어: 저장된 섹터 사용
+
+  _resetMapSelectMode(); // 이중 실행 방지: 선택 즉시 플래그 초기화
+
+  // 오버레이 닫기
+  if (window._mapOverlay) { window._mapOverlay.setMap(null); window._mapOverlay = null; }
+
+  closeMapAll(); // 모달 닫기
+
+  // 섹터를 명시적으로 지정해서 저장 (버그7 방어)
+  _commitAddShownPropertyWithSector(custId, propId, savedSector);
+}
+
+// 섹터를 파라미터로 받는 저장 함수 (버그7: currentSector 대신 저장된 섹터 사용)
+function _commitAddShownPropertyWithSector(custId, propId, sector) {
+  var collection = (sector === 'commercial') ? 'customers_commercial' : 'customers_residential';
+  var c = customers.find(function(x){ return x.id === custId; });
+  if (!c) { alert('고객 정보를 찾을 수 없습니다.'); return; }
+  var arr = (c.shownProps || []).slice();
+  if (arr.indexOf(propId) !== -1) { showToast('이미 추가된 매물이에요.'); return; }
+  arr.push(propId);
+  var now = new Date();
+  db.collection(collection).doc(custId).update({
+    shownProps: arr,
+    updatedDate: now.toLocaleDateString('ko-KR'),
+    updatedTime: now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
+    updatedAtMs: Date.now()
+  }).then(function(){
+    showToast('✅ 매물을 추가했어요!');
+  }).catch(function(e){
+    alert('추가 오류: ' + (e && e.message ? e.message : e));
+  });
 }
 
 // ── 지도 매물 등록 (우클릭/길게누르기 공통) ──────────────
@@ -8182,6 +8303,7 @@ function _mapModalDragEnd(e) {
 }
 
 function closeMapAll() {
+  _resetMapSelectMode(); // 버그1 방어: history.back() 경로 포함 모든 닫기에서 플래그 초기화
   if (_modalStatePushed) { if (window.history && window.history.back) window.history.back(); return; }
   document.getElementById('mapAllModal').classList.remove('active');
 }
