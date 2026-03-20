@@ -93,14 +93,19 @@
     <button class="btn btn-outline" onclick="openBannerModal()">🏷 현수막</button>
     <button class="btn btn-outline" onclick="openMapAll()" style="background:linear-gradient(135deg,#10b981,#0ea5e9);color:#fff;border:none;">🗺 지도</button>
     <button class="btn btn-outline" onclick="openSitesModal()">🔗 사이트</button>
-    <button class="btn btn-outline" onclick="toggleDarkMode()" id="darkModeBtn">🌙 다크</button>
-    <button class="btn btn-outline" onclick="openStats()">📊 통계</button>
-    <button class="btn btn-outline" onclick="togglePCView()">🖥 PC버전</button>
-    <button class="btn btn-outline" onclick="document.getElementById('excelUpload').click()">📤 업로드</button>
-    <input type="file" id="excelUpload" accept=".csv" style="display:none" onchange="uploadExcel(event)">
-    <button class="btn btn-outline" onclick="downloadExcel()">📥 다운로드</button>
-    <button class="btn btn-outline" onclick="openSettings()">⚙️ 설정</button>
-    <button class="btn btn-outline" onclick="openLogModal()">Log</button>
+    <!-- 접히는 버튼 그룹 -->
+    <div id="headerMoreBtns" style="display:none;align-items:center;gap:6px;">
+      <button class="btn btn-outline" onclick="toggleDarkMode()" id="darkModeBtn">🌙 다크</button>
+      <button class="btn btn-outline" onclick="openStats()">📊 통계</button>
+      <button class="btn btn-outline" onclick="togglePCView()">🖥 PC버전</button>
+      <button class="btn btn-outline" onclick="document.getElementById('excelUpload').click()">📤 업로드</button>
+      <input type="file" id="excelUpload" accept=".csv" style="display:none" onchange="uploadExcel(event)">
+      <button class="btn btn-outline" onclick="downloadExcel()">📥 다운로드</button>
+      <button class="btn btn-outline" onclick="openSettings()">⚙️ 설정</button>
+      <button class="btn btn-outline" onclick="openLogModal()">Log</button>
+    </div>
+    <!-- 토글 버튼 -->
+    <button id="headerMoreToggleBtn" class="btn btn-outline" onclick="toggleHeaderMore()" title="더보기">▸</button>
     <button class="btn btn-outline" onclick="openCustomers()" style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;border:none;">👥 고객문의</button>
     <button class="btn btn-primary" onclick="openAddModal()">＋ 매물 등록</button>
     <button class="btn btn-outline" onclick="openAiInputModal()" style="background:linear-gradient(135deg,#6c47f5,#3a7ef6);color:#fff;border:none;">✨ AI 자동입력</button>
@@ -5572,6 +5577,10 @@ function loadFieldSettings(callback) {
     cleanupFieldSettings();
     if(needsSave) saveFieldSettings();
     persistListColumnSettings();
+    // 헤더 더보기 토글 상태 복원 (기본값: 접힘)
+    if(data.headerMoreOpen === true) {
+      _applyHeaderMore(true);
+    }
     // 항목설정·컬럼설정 복원 완료: 캐시 무효화 후 플래그 설정
     invalidateColDefsCache();
     _fieldSettingsReady = true;
@@ -5761,6 +5770,29 @@ function validateFieldSettings() {
   return errors;
 }
 
+// ── 헤더 더보기 토글 ────────────────────────────────────
+window._headerMoreOpen = false;
+
+function _applyHeaderMore(open) {
+  window._headerMoreOpen = open;
+  var wrap = document.getElementById('headerMoreBtns');
+  var btn  = document.getElementById('headerMoreToggleBtn');
+  if(wrap) wrap.style.display = open ? 'flex' : 'none';
+  if(btn)  btn.textContent = open ? '◂' : '▸';
+}
+
+function toggleHeaderMore() {
+  var next = !window._headerMoreOpen;
+  _applyHeaderMore(next);
+  // Firestore에 저장 (set merge로 다른 설정 건드리지 않음)
+  if(db) {
+    db.collection('settings').doc(SETTINGS_DOC).set(
+      { headerMoreOpen: next },
+      { merge: true }
+    ).catch(function(e){ console.warn('headerMoreOpen 저장 실패:', e); });
+  }
+}
+
 function saveFieldSettings() {
   cleanupFieldSettings();
   persistListColumnSettings();
@@ -5786,7 +5818,8 @@ function saveFieldSettings() {
     fieldSchema_commercial_master: fieldSchema.commercial.master,
     fieldSchema_commercial_visibilityByType: fieldSchema.commercial.visibilityByType,
     fieldSchema_residential_master: fieldSchema.residential.master,
-    fieldSchema_residential_visibilityByType: fieldSchema.residential.visibilityByType
+    fieldSchema_residential_visibilityByType: fieldSchema.residential.visibilityByType,
+    headerMoreOpen: window._headerMoreOpen || false
   });
 }
 
