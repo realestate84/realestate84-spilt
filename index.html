@@ -81,7 +81,36 @@
 <div id="mainScreen" style="display:none">
 
 <header>
-  <div class="logo" onclick="refreshApp()" style="cursor:pointer">부동산 영업관리 시스템</div>
+  <div class="logo" onclick="refreshApp()" style="cursor:pointer;line-height:0;">
+    <svg width="260" height="36" viewBox="0 0 680 100" style="display:block;">
+      <defs>
+        <style>
+          @media (prefers-color-scheme: dark) {
+            #logo-bg { fill: transparent; }
+            #logo-grad-start { stop-color: #ffffff; }
+            #logo-grad-end { stop-color: #94a3b8; }
+          }
+          @media (prefers-color-scheme: light) {
+            #logo-bg { fill: transparent; }
+            #logo-grad-start { stop-color: #1e3a8a; }
+            #logo-grad-end { stop-color: #475569; }
+          }
+        </style>
+        <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="0">
+          <stop id="logo-grad-start" offset="0%" stop-color="#ffffff"/>
+          <stop id="logo-grad-end" offset="100%" stop-color="#94a3b8"/>
+        </linearGradient>
+      </defs>
+      <rect id="logo-bg" width="680" height="100" fill="transparent"/>
+      <text x="340" y="66"
+        font-family="'Arial Narrow','Impact',sans-serif"
+        font-size="60"
+        font-weight="900"
+        fill="url(#logo-g)"
+        text-anchor="middle"
+        letter-spacing="-1">NASDAQ FUTURES</text>
+    </svg>
+  </div>
   <div id="sectorToggleWrap" style="display:flex;align-items:center;gap:0;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:2px;">
     <button type="button" id="sectorBtnCommercial" class="btn btn-sm sector-btn" onclick="switchSector('commercial')" style="border-radius:6px;font-size:12px;">상업용</button>
     <button type="button" id="sectorBtnResidential" class="btn btn-outline btn-sm sector-btn" onclick="switchSector('residential')" style="border-radius:6px;font-size:12px;">주거용</button>
