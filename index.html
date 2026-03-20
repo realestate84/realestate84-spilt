@@ -247,7 +247,7 @@
       <textarea id="customerSearch" class="search-input"
         placeholder="🔍 이름/연락처/메모 검색..."
         oninput="renderCustomerList();_toggleCustomerSearchClear('customerSearch','customerSearchClear')"
-        style="height:15px;min-height:15px;max-height:80px;padding:6px 28px 6px 10px;font-size:12px;resize:vertical;margin-bottom:0;width:100%;box-sizing:border-box;"></textarea>
+        style="height:34px;min-height:34px;max-height:34px;padding:6px 28px 6px 10px;font-size:12px;resize:none;margin-bottom:0;width:100%;box-sizing:border-box;overflow:hidden;"></textarea>
       <button id="customerSearchClear" onclick="_clearCustomerSearch('customerSearch','customerSearchClear',renderCustomerList)"
         style="display:none;position:absolute;right:6px;top:6px;background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted);line-height:1;padding:0;" title="검색 초기화">✕</button>
     </div>
@@ -949,7 +949,7 @@
           <textarea id="customerSearchModal" class="search-input"
             placeholder="🔍 이름/연락처/메모 검색..."
             oninput="renderCustomerListModal();_toggleCustomerSearchClear('customerSearchModal','customerSearchClearModal')"
-            style="height:15px;min-height:15px;max-height:80px;padding:6px 28px 6px 10px;font-size:12px;resize:vertical;width:100%;box-sizing:border-box;"></textarea>
+            style="height:34px;min-height:34px;max-height:34px;padding:6px 28px 6px 10px;font-size:12px;resize:none;width:100%;box-sizing:border-box;overflow:hidden;"></textarea>
           <button id="customerSearchClearModal" onclick="_clearCustomerSearch('customerSearchModal','customerSearchClearModal',renderCustomerListModal)"
             style="display:none;position:absolute;right:6px;top:6px;background:none;border:none;cursor:pointer;font-size:14px;color:var(--text-muted);line-height:1;padding:0;" title="검색 초기화">✕</button>
         </div>
