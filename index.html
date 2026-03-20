@@ -2765,8 +2765,8 @@ function openSitesModal() {
 }
 
 function closeSitesModal() {
-  if (_modalStatePushed) { if (window.history && window.history.back) window.history.back(); return; }
   document.getElementById('sitesModal').classList.remove('active');
+  if (_modalStatePushed) { _modalStatePushed = false; if (window.history && window.history.back) window.history.back(); }
 }
 
 document.addEventListener('click', function(e) {
@@ -5119,7 +5119,7 @@ window.addEventListener('popstate', function(e) {
   var stm = document.getElementById('statsModal');
   if (stm && stm.classList.contains('active')) { closeStats(); return; }
   var sitem = document.getElementById('sitesModal');
-  if (sitem && sitem.classList.contains('active')) { closeSitesModal(); return; }
+  if (sitem && sitem.classList.contains('active')) { sitem.classList.remove('active'); return; }
   var lm = document.getElementById('logModal');
   if (lm && lm.classList.contains('active')) { closeLogModal(); return; }
   var todom = document.getElementById('todoModal');
