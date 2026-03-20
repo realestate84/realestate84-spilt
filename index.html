@@ -9435,6 +9435,8 @@ function calSilentAuth() {
       var tokenClient = window.google.accounts.oauth2.initTokenClient({
         client_id: _calClientId,
         scope: 'https://www.googleapis.com/auth/calendar',
+        // 실패해도 현재 탭을 리다이렉트하지 않도록 명시 (구글 화면 뜨는 버그 방어)
+        error_callback: function() { /* silent 실패 시 아무것도 안 함 */ },
         callback: function(resp) {
           if(resp.error || !resp.access_token) return;
           calSaveToken(resp.access_token, resp.expires_in || 3500);
@@ -9446,7 +9448,8 @@ function calSilentAuth() {
           }
         }
       });
-      tokenClient.requestAccessToken({ prompt: '' }); // 팝업 없이 시도
+      // prompt:'' + ux_mode:'popup' → 세션 없어도 현재 탭 리다이렉트 방지
+      tokenClient.requestAccessToken({ prompt: '', ux_mode: 'popup' });
     } catch(e) {}
   });
 }
