@@ -2703,34 +2703,62 @@ function closeStats() {
 }
 
 var relatedSites = [
-  { name: '네이버부동산', url: 'http://land.naver.com/' },
-  { name: '네이버광고', url: 'https://ads.naver.com/' },
-  { name: '정부24', url: 'http://www.gov.kr/' },
-  { name: '세움터', url: 'https://www.eais.go.kr/' },
-  { name: '인터넷등기소', url: 'http://www.iros.go.kr/' },
-  { name: '홈택스', url: 'http://www.hometax.go.kr/' },
-  { name: '토지e음', url: 'http://www.eum.go.kr/' },
-  { name: '땅야', url: 'http://www.ddangya.com/' },
-  { name: '밸류맵', url: 'http://www.valueupmap.com/' },
-  { name: '디스코', url: 'http://www.disco.re/' },
-  { name: '마이옥션', url: 'http://www.my-auction.co.kr/' },
-  { name: '아실', url: 'https://asil.kr/' },
-  { name: '호갱노노', url: 'http://www.hogangnono.com/' },
-  { name: 'KB부동산', url: 'https://kbland.kr/' },
-  { name: '부동산공시가격알리미', url: 'http://www.realtyprice.kr/' },
-  { name: '실거래가 신고', url: 'https://rtms.molit.go.kr/' },
-  { name: '국토교통부 실거래가', url: 'http://rt.molit.go.kr/' },
-  { name: '한국공인중개사협회', url: 'http://www.kar.or.kr/' },
-  { name: '네이버지도', url: 'https://map.naver.com/' },
-  { name: '카카오지도', url: 'https://map.kakao.com/' },
-  { name: '구글지도', url: 'https://www.google.com/maps/' },
-  { name: '사용량', url: 'https://console.firebase.google.com/u/0/project/realestate84-3574f/usage?hl=ko&fb_gclid=CjwKCAjwpcTNBhA5EiwAdO1S9htdE_9ozpHH3rpba-nFuqib4JEKOzps1Vo76f3rNsxx_7ZUdljbkRoCjEQQAvD_BwE&fb_utm_campaign=Cloud-SS-DR-Firebase-FY26-global-gsem-1713590&fb_utm_content=text-ad&fb_utm_medium=cpc&fb_utm_source=google&fb_utm_term=KW_firestore%20database' }
+  {
+    section: '🏠 부동산 플랫폼',
+    sites: [
+      { name: '네이버부동산', url: 'http://land.naver.com/' },
+      { name: '네이버광고',   url: 'https://ads.naver.com/' },
+      { name: '땅야',         url: 'http://www.ddangya.com/' },
+      { name: '밸류맵',       url: 'http://www.valueupmap.com/' },
+      { name: '디스코',       url: 'http://www.disco.re/' },
+      { name: '마이옥션',     url: 'http://www.my-auction.co.kr/' },
+      { name: '아실',         url: 'https://asil.kr/' },
+      { name: '호갱노노',     url: 'http://www.hogangnono.com/' },
+      { name: 'KB부동산',     url: 'https://kbland.kr/' }
+    ]
+  },
+  {
+    section: '🏛 공공기관',
+    sites: [
+      { name: '정부24',               url: 'http://www.gov.kr/' },
+      { name: '세움터',               url: 'https://www.eais.go.kr/' },
+      { name: '인터넷등기소',         url: 'http://www.iros.go.kr/' },
+      { name: '홈택스',               url: 'http://www.hometax.go.kr/' },
+      { name: '토지e음',              url: 'http://www.eum.go.kr/' },
+      { name: '부동산공시가격알리미', url: 'http://www.realtyprice.kr/' },
+      { name: '실거래가 신고',        url: 'https://rtms.molit.go.kr/' },
+      { name: '국토교통부 실거래가',  url: 'http://rt.molit.go.kr/' },
+      { name: '한국공인중개사협회',   url: 'http://www.kar.or.kr/' }
+    ]
+  },
+  {
+    section: '🗺 지도',
+    sites: [
+      { name: '네이버지도', url: 'https://map.naver.com/' },
+      { name: '카카오지도', url: 'https://map.kakao.com/' },
+      { name: '구글지도',   url: 'https://www.google.com/maps/' }
+    ]
+  },
+  {
+    section: '⚙️ 관리',
+    sites: [
+      { name: '사용량', url: 'https://console.firebase.google.com/u/0/project/realestate84-3574f/usage?hl=ko&fb_gclid=CjwKCAjwpcTNBhA5EiwAdO1S9htdE_9ozpHH3rpba-nFuqib4JEKOzps1Vo76f3rNsxx_7ZUdljbkRoCjEQQAvD_BwE&fb_utm_campaign=Cloud-SS-DR-Firebase-FY26-global-gsem-1713590&fb_utm_content=text-ad&fb_utm_medium=cpc&fb_utm_source=google&fb_utm_term=KW_firestore%20database' }
+    ]
+  }
 ];
 
 function openSitesModal() {
   var grid = document.getElementById('sitesBannerGrid');
-  grid.innerHTML = relatedSites.map(function(s, i) {
-    return '<a class="sites-banner-item" href="' + s.url + '" target="_blank" rel="noopener"><span class="site-name">' + (i + 1) + '. ' + s.name + '</span></a>';
+  grid.innerHTML = relatedSites.map(function(group) {
+    var siteItems = group.sites.map(function(s) {
+      return '<a class="sites-banner-item" href="' + s.url + '" target="_blank" rel="noopener">' +
+        '<span class="site-name">' + s.name + '</span>' +
+      '</a>';
+    }).join('');
+    return '<div style="margin-bottom:20px;">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">' + group.section + '</div>' +
+      '<div class="sites-banner-grid">' + siteItems + '</div>' +
+    '</div>';
   }).join('');
   document.getElementById('sitesModal').classList.add('active');
   pushModalState();
