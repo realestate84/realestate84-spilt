@@ -8928,6 +8928,9 @@ async function runAiAutoFill() {
     return;
   }
 
+  // 입력 원문 보존 (참고사항에 넣기 위해)
+  var originalInputText = text;
+
   var btn = document.getElementById('aiInputRunBtn');
   var status = document.getElementById('aiInputStatus');
   var PROXY_URL = 'https://realestate84.gsr365i.workers.dev';
@@ -9002,7 +9005,7 @@ async function runAiAutoFill() {
       var m2 = raw2.match(/\{[\s\S]*\}/);
       if(!m2) throw new Error('2단계 JSON 파싱 실패');
       var parsed = JSON.parse(m2[0]);
-      applyAiParsed(parsed, RES_TYPES);
+      applyAiParsed(parsed, RES_TYPES, originalInputText);
       return;
     }
 
@@ -9021,9 +9024,11 @@ async function runAiAutoFill() {
     // 이미지에서 추출된 텍스트를 텍스트창에 표시
     if(parsed.extractedText) {
       document.getElementById('aiInputText').value = parsed.extractedText;
+      // 이미지 경로: extractedText가 원문 역할
+      if(!originalInputText) originalInputText = parsed.extractedText;
     }
 
-    applyAiParsed(parsed, RES_TYPES);
+    applyAiParsed(parsed, RES_TYPES, originalInputText);
 
   } catch(err) {
     document.getElementById('aiInputStatus').textContent = '❌ 오류: ' + (err.message || '분석에 실패했어요. 다시 시도해주세요.');
@@ -9032,7 +9037,7 @@ async function runAiAutoFill() {
   }
 }
 
-function applyAiParsed(parsed, RES_TYPES) {
+function applyAiParsed(parsed, RES_TYPES, originalText) {
   var detectedType = parsed.type || '';
   closeAiInputModal();
   var needSector = RES_TYPES.indexOf(detectedType) !== -1 ? 'residential' : 'commercial';
@@ -9067,6 +9072,17 @@ function applyAiParsed(parsed, RES_TYPES) {
           if(el) el.value = parsed[k];
         }
       });
+
+      // ── 입력 원문 → 참고사항(f_note)에 저장 ──
+      if(originalText) {
+        var noteEl = document.getElementById('f_note');
+        if(noteEl) {
+          var prefix = '[AI 입력 원문]\n';
+          noteEl.value = noteEl.value
+            ? noteEl.value + '\n\n' + prefix + originalText
+            : prefix + originalText;
+        }
+      }
 
       // 주소 Geocoder 정제
       var rawAddr = parsed.address || '';
