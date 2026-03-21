@@ -83,26 +83,13 @@
 
 <header>
   <div class="logo" onclick="refreshApp()" style="cursor:pointer;line-height:0;">
-    <svg width="260" height="36" viewBox="0 0 680 100" style="display:block;">
+    <svg id="logoSvg" width="260" height="36" viewBox="0 0 680 100" style="display:block;">
       <defs>
-        <style>
-          @media (prefers-color-scheme: dark) {
-            #logo-bg { fill: transparent; }
-            #logo-grad-start { stop-color: #ffffff; }
-            #logo-grad-end { stop-color: #94a3b8; }
-          }
-          @media (prefers-color-scheme: light) {
-            #logo-bg { fill: transparent; }
-            #logo-grad-start { stop-color: #1e3a8a; }
-            #logo-grad-end { stop-color: #475569; }
-          }
-        </style>
         <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="0">
-          <stop id="logo-grad-start" offset="0%" stop-color="#ffffff"/>
-          <stop id="logo-grad-end" offset="100%" stop-color="#94a3b8"/>
+          <stop id="logo-grad-start" offset="0%" stop-color="#1e3a8a"/>
+          <stop id="logo-grad-end" offset="100%" stop-color="#475569"/>
         </linearGradient>
       </defs>
-      <rect id="logo-bg" width="680" height="100" fill="transparent"/>
       <text x="340" y="66"
         font-family="'Arial Narrow','Impact',sans-serif"
         font-size="60"
@@ -5346,6 +5333,7 @@ function toggleDarkMode() {
   var isDark = document.body.classList.toggle('dark');
   localStorage.setItem('darkMode', isDark ? '1' : '0');
   updateDarkModeBtn(isDark);
+  updateLogoColor(isDark);
 }
 function updateDarkModeBtn(isDark) {
   var btn = document.getElementById('darkModeBtn');
@@ -5353,12 +5341,29 @@ function updateDarkModeBtn(isDark) {
   if(btn) btn.textContent = isDark ? '☀️ 라이트' : '🌙 다크';
   if(btnM) btnM.textContent = isDark ? '☀️ 라이트' : '🌙 다크';
 }
+function updateLogoColor(isDark) {
+  var s = document.getElementById('logo-grad-start');
+  var e = document.getElementById('logo-grad-end');
+  if(!s || !e) return;
+  if(isDark) {
+    s.setAttribute('stop-color', '#ffffff');
+    e.setAttribute('stop-color', '#94a3b8');
+  } else {
+    s.setAttribute('stop-color', '#1e3a8a');
+    e.setAttribute('stop-color', '#475569');
+  }
+}
 // 저장된 다크모드 복원
 (function(){
-  if(localStorage.getItem('darkMode') === '1') {
+  var isDark = localStorage.getItem('darkMode') === '1';
+  if(isDark) {
     document.body.classList.add('dark');
     updateDarkModeBtn(true);
   }
+  // 로드 시 로고 색상 적용 (DOM 준비 후)
+  document.addEventListener('DOMContentLoaded', function(){
+    updateLogoColor(isDark);
+  });
 })();
 
 // ── 항목 설정 시스템 ───────────────────────────
