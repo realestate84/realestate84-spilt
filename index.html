@@ -6878,12 +6878,12 @@ async function runAiPropRecommend(custId) {
     var resp = await fetch(PROXY_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        model:'gpt-4o', max_tokens:300,
+        model:'claude-sonnet-4-20250514', max_tokens:300,
         messages:[{role:'user', content:prompt}]
       })
     });
     var data = await resp.json();
-    var raw = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    var raw = data.content && data.content[0] && data.content[0].text;
     if (!raw) throw new Error('AI 응답 없음');
 
     var m = raw.match(/\[[\s\S]*\]/);
@@ -8745,7 +8745,7 @@ async function runAiAutoFill() {
       messages = [{
         role: 'user',
         content: [
-          { type:'image_url', image_url:{ url:'data:' + _aiImageMime + ';base64,' + _aiImageBase64 } },
+          { type:'image', source:{ type:'base64', media_type:_aiImageMime, data:_aiImageBase64 } },
           { type:'text', text:'이 이미지의 모든 글씨를 읽고 매물 정보를 분석해서 아래 JSON 형식으로만 응답하세요. 모르거나 없는 항목은 빈 문자열로 두세요. JSON 외 텍스트 절대 금지.\n\n매물종류별 커스텀 항목(해당되는 것만 포함):' + allCustomSpec + '\n\n응답JSON형식:{' + fixedSpec + ',(해당 매물종류의 커스텀 항목들 추가)}' }
         ]
       }];
@@ -8755,10 +8755,10 @@ async function runAiAutoFill() {
       var step1prompt = '다음 매물 정보에서 매물종류와 거래유형만 파악해서 JSON으로만 응답하세요. JSON 외 다른 텍스트 절대 금지.\n\n매물 정보:\n' + text + '\n\n응답 형식:\n{"georae":"매매|전세|월세 중 하나","type":"토지|공장창고|상가/사무실|아파트|빌라|상가주택|원룸|1.5룸|투룸|오피스텔|절대농지|단독주택|펜션|건물 중 하나"}';
       var r1 = await fetch(PROXY_URL, {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'gpt-4o', max_tokens:100, messages:[{role:'user',content:step1prompt}] })
+        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:100, messages:[{role:'user',content:step1prompt}] })
       });
       var d1 = await r1.json();
-      var raw1 = d1.choices && d1.choices[0] && d1.choices[0].message && d1.choices[0].message.content;
+      var raw1 = d1.content && d1.content[0] && d1.content[0].text;
       if(!raw1) throw new Error('1단계 응답 없음');
       var m1 = raw1.match(/\{[\s\S]*\}/);
       if(!m1) throw new Error('1단계 JSON 파싱 실패');
@@ -8783,10 +8783,10 @@ async function runAiAutoFill() {
 
       var r2 = await fetch(PROXY_URL, {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'gpt-4o', max_tokens:1500, messages:messages })
+        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1500, messages:messages })
       });
       var d2 = await r2.json();
-      var raw2 = d2.choices && d2.choices[0] && d2.choices[0].message && d2.choices[0].message.content;
+      var raw2 = d2.content && d2.content[0] && d2.content[0].text;
       if(!raw2) throw new Error('2단계 응답 없음');
       var m2 = raw2.match(/\{[\s\S]*\}/);
       if(!m2) throw new Error('2단계 JSON 파싱 실패');
@@ -8798,10 +8798,10 @@ async function runAiAutoFill() {
     // 이미지 단일 호출 처리
     var resp = await fetch(PROXY_URL, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'gpt-4o', max_tokens:1500, messages:messages })
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1500, messages:messages })
     });
     var data = await resp.json();
-    var raw = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    var raw = data.content && data.content[0] && data.content[0].text;
     if(!raw) throw new Error('응답 없음');
     var jm = raw.match(/\{[\s\S]*\}/);
     if(!jm) throw new Error('JSON 파싱 실패');
