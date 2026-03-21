@@ -2633,6 +2633,35 @@ function openStats() {
       return;
     }
 
+    // 고객문의 월별 집계 - 상업용/주거용 동시 조회
+    function countCustSnap(csnap) {
+      var cm = {};
+      (csnap.docs||[]).forEach(function(d) {
+        var c = d.data();
+        if(c.createdDate) {
+          var m = c.createdDate.replace(/\./g,'-').split('-').slice(0,2).join('-').trim();
+          cm[m] = (cm[m]||0) + 1;
+        } else if(c.createdAtMs) {
+          var dt = new Date(c.createdAtMs);
+          var ym = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0');
+          cm[ym] = (cm[ym]||0) + 1;
+        }
+      });
+      return { map: cm, total: (csnap.size||0) };
+    }
+    var custMonthMapPromise = Promise.all([
+      db.collection('customers_commercial').get().catch(function(){ return {docs:[],size:0}; }),
+      db.collection('customers_residential').get().catch(function(){ return {docs:[],size:0}; })
+    ]).then(function(results) {
+      var comm = countCustSnap(results[0]);
+      var resi = countCustSnap(results[1]);
+      var allMap = {};
+      [comm.map, resi.map].forEach(function(m) {
+        Object.keys(m).forEach(function(k){ allMap[k] = (allMap[k]||0) + m[k]; });
+      });
+      return { map: allMap, total: comm.total + resi.total, commTotal: comm.total, resiTotal: resi.total };
+    }).catch(function(){ return { map: {}, total: 0, commTotal: 0, resiTotal: 0 }; });
+
     // 거래유형별
     var georaeMap = {};
     // 매물종류별
@@ -2700,49 +2729,101 @@ function openStats() {
       return Math.round(sum/priced.length).toLocaleString()+'만원';
     })();
 
-    var html =
-      // 요약 카드
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:24px;">'+
-        '<div style="background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;padding:14px;color:#fff;text-align:center;">'+
-          '<div style="font-size:26px;font-weight:700;">'+total+'</div><div style="font-size:12px;opacity:0.85;">전체 매물</div></div>'+
-        '<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">'+
-          '<div style="font-size:22px;font-weight:700;color:var(--accent);">'+(georaeMap['매매']||0)+'</div><div style="font-size:12px;color:var(--text-muted);">매매</div></div>'+
-        '<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">'+
-          '<div style="font-size:22px;font-weight:700;color:var(--accent2);">'+(georaeMap['전세']||0)+'</div><div style="font-size:12px;color:var(--text-muted);">전세</div></div>'+
-        '<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">'+
-          '<div style="font-size:22px;font-weight:700;color:#f0a030;">'+(georaeMap['월세']||0)+'</div><div style="font-size:12px;color:var(--text-muted);">월세</div></div>'+
-        '<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">'+
-          '<div style="font-size:22px;font-weight:700;color:#3a7ef6;">'+depCount+'</div><div style="font-size:12px;color:var(--text-muted);">출발가능</div></div>'+
-      '</div>'+
-      // 차트 그리드
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">'+
-        '<div style="background:var(--bg);border-radius:12px;padding:16px;">'+
-          '<div style="font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text);">거래유형별 매물수</div>'+
-          makeBar(georaeMap, function(i){ return colors1[i%colors1.length]; })+
-        '</div>'+
-        '<div style="background:var(--bg);border-radius:12px;padding:16px;">'+
-          '<div style="font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text);">매물종류별 매물수</div>'+
-          makeBar(typeMap, function(i){ return colors2[i%colors2.length]; })+
-        '</div>'+
-        '<div style="background:var(--bg);border-radius:12px;padding:16px;">'+
-          '<div style="font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text);">지역별 매물수</div>'+
-          makeBar(regionMap, function(i){ return colors3[i%colors3.length]; })+
-        '</div>'+
-        '<div style="background:var(--bg);border-radius:12px;padding:16px;">'+
-          '<div style="font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text);">용도지역별 매물수</div>'+
-          (Object.keys(useZoneMap).length ? makeBar(useZoneMap, function(i){ return colors2[i%colors2.length]; }) :
-          '<div style="font-size:12px;color:var(--text-muted);">용도지역 데이터 없음</div>')+
-        '</div>'+
-        '<div style="background:var(--bg);border-radius:12px;padding:16px;grid-column:1/-1;">'+
-          '<div style="font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text);">월별 등록 매물수</div>'+
-          (Object.keys(monthMap).length ? makeBar(
-            Object.fromEntries(Object.entries(monthMap).sort()),
-            function(i){ return colors3[i%colors3.length]; }) :
-          '<div style="font-size:12px;color:var(--text-muted);">등록일 데이터 없음</div>')+
-        '</div>'+
-      '</div>';
+    custMonthMapPromise.then(function(custResult) {
+      var custMonthMap = custResult.map;
+      var custTotal = custResult.total;
 
-    document.getElementById('statsBody').innerHTML = html;
+      // 월별 매물+문의 합친 키 목록
+      var allMonthKeys = Array.from(new Set(
+        Object.keys(monthMap).concat(Object.keys(custMonthMap))
+      )).sort();
+
+      function makeMonthCombinedBar(propMap, custMap, keys) {
+        if(!keys.length) return '<div style="font-size:12px;color:var(--text-muted);">데이터 없음</div>';
+        var maxVal = keys.reduce(function(m, k) {
+          return Math.max(m, propMap[k]||0, custMap[k]||0);
+        }, 1);
+        return keys.map(function(k) {
+          var pv = propMap[k]||0;
+          var cv = custMap[k]||0;
+          var pw = Math.round(pv/maxVal*100);
+          var cw = Math.round(cv/maxVal*100);
+          return '<div style="margin-bottom:12px;">'+
+            '<div style="font-size:12px;font-weight:600;margin-bottom:4px;color:var(--text);">'+k+'</div>'+
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">'+
+              '<span style="font-size:11px;color:var(--text-muted);width:52px;flex-shrink:0;">📦 매물</span>'+
+              '<div style="flex:1;background:var(--border);border-radius:4px;height:8px;overflow:hidden;">'+
+                '<div style="height:100%;width:'+pw+'%;background:#3a7ef6;border-radius:4px;transition:width 0.4s;"></div>'+
+              '</div>'+
+              '<span style="font-size:11px;color:#3a7ef6;width:28px;text-align:right;flex-shrink:0;">'+pv+'건</span>'+
+            '</div>'+
+            '<div style="display:flex;align-items:center;gap:6px;">'+
+              '<span style="font-size:11px;color:var(--text-muted);width:52px;flex-shrink:0;">👥 문의</span>'+
+              '<div style="flex:1;background:var(--border);border-radius:4px;height:8px;overflow:hidden;">'+
+                '<div style="height:100%;width:'+cw+'%;background:#f59e0b;border-radius:4px;transition:width 0.4s;"></div>'+
+              '</div>'+
+              '<span style="font-size:11px;color:#f59e0b;width:28px;text-align:right;flex-shrink:0;">'+cv+'건</span>'+
+            '</div>'+
+          '</div>';
+        }).join('');
+      }
+
+      var html =
+        // 요약 카드
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:24px;">'+
+          '<div style="background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;padding:14px;color:#fff;text-align:center;">'+
+            '<div style="font-size:26px;font-weight:700;">'+total+'</div><div style="font-size:12px;opacity:0.85;">전체 매물</div></div>'+
+          '<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">'+
+            '<div style="font-size:22px;font-weight:700;color:var(--accent);">'+(georaeMap['매매']||0)+'</div><div style="font-size:12px;color:var(--text-muted);">매매</div></div>'+
+          '<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">'+
+            '<div style="font-size:22px;font-weight:700;color:var(--accent2);">'+(georaeMap['전세']||0)+'</div><div style="font-size:12px;color:var(--text-muted);">전세</div></div>'+
+          '<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">'+
+            '<div style="font-size:22px;font-weight:700;color:#f0a030;">'+(georaeMap['월세']||0)+'</div><div style="font-size:12px;color:var(--text-muted);">월세</div></div>'+
+          '<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">'+
+            '<div style="font-size:22px;font-weight:700;color:#3a7ef6;">'+depCount+'</div><div style="font-size:12px;color:var(--text-muted);">출발가능</div></div>'+
+          '<div style="background:linear-gradient(135deg,#f59e0b,#ef4444);border-radius:10px;padding:14px;color:#fff;text-align:center;">'+
+            '<div style="font-size:26px;font-weight:700;">'+custTotal+'</div>'+
+            '<div style="font-size:12px;opacity:0.85;">전체 문의</div>'+
+            '<div style="display:flex;justify-content:center;gap:8px;margin-top:6px;font-size:11px;opacity:0.9;">'+
+              '<span>🏢 상업 '+custResult.commTotal+'</span>'+
+              '<span style="opacity:0.6;">|</span>'+
+              '<span>🏠 주거 '+custResult.resiTotal+'</span>'+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+        // 차트 그리드
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">'+
+          '<div style="background:var(--bg);border-radius:12px;padding:16px;">'+
+            '<div style="font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text);">거래유형별 매물수</div>'+
+            makeBar(georaeMap, function(i){ return colors1[i%colors1.length]; })+
+          '</div>'+
+          '<div style="background:var(--bg);border-radius:12px;padding:16px;">'+
+            '<div style="font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text);">매물종류별 매물수</div>'+
+            makeBar(typeMap, function(i){ return colors2[i%colors2.length]; })+
+          '</div>'+
+          '<div style="background:var(--bg);border-radius:12px;padding:16px;">'+
+            '<div style="font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text);">지역별 매물수</div>'+
+            makeBar(regionMap, function(i){ return colors3[i%colors3.length]; })+
+          '</div>'+
+          '<div style="background:var(--bg);border-radius:12px;padding:16px;">'+
+            '<div style="font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text);">용도지역별 매물수</div>'+
+            (Object.keys(useZoneMap).length ? makeBar(useZoneMap, function(i){ return colors2[i%colors2.length]; }) :
+            '<div style="font-size:12px;color:var(--text-muted);">용도지역 데이터 없음</div>')+
+          '</div>'+
+          '<div style="background:var(--bg);border-radius:12px;padding:16px;grid-column:1/-1;">'+
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">'+
+              '<div style="font-size:13px;font-weight:600;color:var(--text);">월별 등록 매물수 &amp; 문의수</div>'+
+              '<div style="display:flex;gap:12px;font-size:11px;">'+
+                '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#3a7ef6;"></span>매물</span>'+
+                '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f59e0b;"></span>고객문의</span>'+
+              '</div>'+
+            '</div>'+
+            makeMonthCombinedBar(monthMap, custMonthMap, allMonthKeys)+
+          '</div>'+
+        '</div>';
+
+      document.getElementById('statsBody').innerHTML = html;
+    });
 
   }).catch(function(e) {
     document.getElementById('statsBody').innerHTML =
