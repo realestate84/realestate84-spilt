@@ -35,6 +35,7 @@
 
 </head>
 <body>
+<script>(function(){var t=localStorage.getItem('lightTheme');if(t)document.body.classList.add(t);})();</script>
 
 <!-- 로그인 화면 -->
 <!-- 초기 로딩 스피너 (Firebase 인증 확인 중) -->
@@ -5610,9 +5611,15 @@ function loadFieldSettings(callback) {
     if(data.headerMoreOpen === true) {
       _applyHeaderMore(true);
     }
-    // 라이트모드 테마 복원
+    // 라이트모드 테마 복원 (Firestore 값을 최종 기준으로)
     if(data.lightTheme !== undefined) {
-      applyTheme(data.lightTheme || '');
+      var firestoreTheme = data.lightTheme || '';
+      // localStorage 동기화 (다른 기기에서 바뀐 경우 반영)
+      try { localStorage.setItem('lightTheme', firestoreTheme); } catch(e) {}
+      // 현재 적용된 테마와 다를 때만 재적용 (깜빡임 방지)
+      if(window._currentTheme !== firestoreTheme) {
+        applyTheme(firestoreTheme);
+      }
     }
     // 항목설정·컬럼설정 복원 완료: 캐시 무효화 후 플래그 설정
     invalidateColDefsCache();
@@ -5827,23 +5834,23 @@ function toggleHeaderMore() {
 }
 
 // ── 라이트모드 테마 ──────────────────────────────────────
-window._currentTheme = '';
+// 인라인 스크립트로 이미 body 클래스가 적용됐으므로 초기값도 localStorage에서 읽음
+window._currentTheme = (function(){ try { return localStorage.getItem('lightTheme') || ''; } catch(e){ return ''; } })();
 var _themeClasses = ['theme-green','theme-amber','theme-rose','theme-navy'];
 
 function applyTheme(themeKey) {
   window._currentTheme = themeKey;
-  // 기존 테마 클래스 모두 제거 후 새 클래스 적용
   _themeClasses.forEach(function(c){ document.body.classList.remove(c); });
   if(themeKey) document.body.classList.add(themeKey);
-  // Firestore 저장 (merge)
+  // localStorage 저장 → 새로고침 시 즉시 복원 (같은 기기)
+  try { localStorage.setItem('lightTheme', themeKey || ''); } catch(e) {}
+  // Firestore 저장 → 다른 기기에서도 복원
   if(db) {
     db.collection('settings').doc(SETTINGS_DOC).set(
       { lightTheme: themeKey },
       { merge: true }
     ).catch(function(e){ console.warn('테마 저장 실패:', e); });
   }
-  // 설정 패널이 열려있을 때만 재렌더 (선택 표시 업데이트)
-  // _tmpFieldSettings가 초기화된 상태(openSettings 이후)일 때만 렌더
   if(_tmpFieldSettings) renderSettingsPanel();
 }
 
