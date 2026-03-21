@@ -5,43 +5,7 @@
   --danger:#e04a5a;
 }
 
-/* ── 테마: 슬레이트 그린 ──────────────────── */
-body.theme-green {
-  --bg:#f0f7f4; --surface:#fff; --surface2:#e4f1ec; --border:#c8ddd5;
-  --accent:#16a34a; --accent2:#0d9488; --text:#1a2e1f; --text-muted:#5a7a6a;
-}
-body.theme-green.dark {
-  --accent:#4ade80; --accent2:#2dd4bf;
-}
-
-/* ── 테마: 워밍 앰버 ──────────────────────── */
-body.theme-amber {
-  --bg:#fdf8f0; --surface:#fff; --surface2:#faefd8; --border:#e8d8c0;
-  --accent:#d97706; --accent2:#b45309; --text:#2a1f0f; --text-muted:#8a7050;
-}
-body.theme-amber.dark {
-  --accent:#fbbf24; --accent2:#f59e0b;
-}
-
-/* ── 테마: 로즈 핑크 ──────────────────────── */
-body.theme-rose {
-  --bg:#fdf0f3; --surface:#fff; --surface2:#fce0e6; --border:#f0c8d0;
-  --accent:#e11d48; --accent2:#9f1239; --text:#2a0f18; --text-muted:#8a5060;
-}
-body.theme-rose.dark {
-  --accent:#fb7185; --accent2:#f43f5e;
-}
-
-/* ── 테마: 딥 네이비 ──────────────────────── */
-body.theme-navy {
-  --bg:#eef2fa; --surface:#fff; --surface2:#dce6f5; --border:#c8d4e8;
-  --accent:#1e3a8a; --accent2:#1e40af; --text:#0f1a30; --text-muted:#5a6a8a;
-}
-body.theme-navy.dark {
-  --accent:#60a5fa; --accent2:#818cf8;
-}
-
-/* ── 다크모드 ─────────────────────────────── */
+/* ── 다크모드 (테마보다 먼저 선언 → 테마가 덮어씀) ── */
 body.dark {
   --bg:#0c1017;--surface:#131920;--surface2:#1a2130;
   --border:#1e2d3d;--border2:#243447;
@@ -72,6 +36,46 @@ body.dark .table-wrap { background:var(--surface); border-color:var(--border); }
 body.dark td { border-bottom-color:var(--border); }
 body.dark tr:hover td { background:rgba(107,159,248,0.05); }
 body.dark tr:hover td:first-child { background:var(--surface); filter:brightness(1.05); }
+
+/* ── 테마 (다크모드보다 뒤 → 라이트모드 변수 우선 적용) ── */
+body.theme-green {
+  --bg:#f0f7f4; --surface:#fff; --surface2:#e4f1ec; --border:#c8ddd5;
+  --accent:#16a34a; --accent2:#0d9488; --text:#1a2e1f; --text-muted:#5a7a6a;
+}
+body.theme-amber {
+  --bg:#fdf8f0; --surface:#fff; --surface2:#faefd8; --border:#e8d8c0;
+  --accent:#d97706; --accent2:#b45309; --text:#2a1f0f; --text-muted:#8a7050;
+}
+body.theme-rose {
+  --bg:#fdf0f3; --surface:#fff; --surface2:#fce0e6; --border:#f0c8d0;
+  --accent:#e11d48; --accent2:#9f1239; --text:#2a0f18; --text-muted:#8a5060;
+}
+body.theme-navy {
+  --bg:#eef2fa; --surface:#fff; --surface2:#dce6f5; --border:#c8d4e8;
+  --accent:#1e3a8a; --accent2:#1e40af; --text:#0f1a30; --text-muted:#5a6a8a;
+}
+
+/* ── 테마 + 다크모드 조합 (가장 마지막 → 최우선) ── */
+body.theme-green.dark {
+  --bg:#0c1017; --surface:#131920; --surface2:#1a2130; --border:#1e2d3d;
+  --text:#e2eaf4; --text-muted:#6a7090;
+  --accent:#4ade80; --accent2:#2dd4bf;
+}
+body.theme-amber.dark {
+  --bg:#0c1017; --surface:#131920; --surface2:#1a2130; --border:#1e2d3d;
+  --text:#e2eaf4; --text-muted:#6a7090;
+  --accent:#fbbf24; --accent2:#f59e0b;
+}
+body.theme-rose.dark {
+  --bg:#0c1017; --surface:#131920; --surface2:#1a2130; --border:#1e2d3d;
+  --text:#e2eaf4; --text-muted:#6a7090;
+  --accent:#fb7185; --accent2:#f43f5e;
+}
+body.theme-navy.dark {
+  --bg:#0c1017; --surface:#131920; --surface2:#1a2130; --border:#1e2d3d;
+  --text:#e2eaf4; --text-muted:#6a7090;
+  --accent:#60a5fa; --accent2:#818cf8;
+}
 
 /* ── 리셋 & 기본 ──────────────────────────── */
 *{box-sizing:border-box;margin:0;padding:0;}
