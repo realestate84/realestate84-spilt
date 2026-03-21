@@ -5610,6 +5610,10 @@ function loadFieldSettings(callback) {
     if(data.headerMoreOpen === true) {
       _applyHeaderMore(true);
     }
+    // 라이트모드 테마 복원
+    if(data.lightTheme !== undefined) {
+      applyTheme(data.lightTheme || '');
+    }
     // 항목설정·컬럼설정 복원 완료: 캐시 무효화 후 플래그 설정
     invalidateColDefsCache();
     _fieldSettingsReady = true;
@@ -5820,6 +5824,26 @@ function toggleHeaderMore() {
       { merge: true }
     ).catch(function(e){ console.warn('headerMoreOpen 저장 실패:', e); });
   }
+}
+
+// ── 라이트모드 테마 ──────────────────────────────────────
+window._currentTheme = '';
+var _themeClasses = ['theme-green','theme-amber','theme-rose','theme-navy'];
+
+function applyTheme(themeKey) {
+  window._currentTheme = themeKey;
+  // 기존 테마 클래스 모두 제거 후 새 클래스 적용
+  _themeClasses.forEach(function(c){ document.body.classList.remove(c); });
+  if(themeKey) document.body.classList.add(themeKey);
+  // Firestore 저장 (merge)
+  if(db) {
+    db.collection('settings').doc(SETTINGS_DOC).set(
+      { lightTheme: themeKey },
+      { merge: true }
+    ).catch(function(e){ console.warn('테마 저장 실패:', e); });
+  }
+  // 설정 패널 재렌더 (선택 표시 업데이트)
+  renderSettingsPanel();
 }
 
 function saveFieldSettings() {
@@ -7615,6 +7639,33 @@ function renderSettingsPanel() {
       '</div>'+
     '</div>';
   }
+
+  // ── 테마 선택 섹션 ──────────────────────────────────────
+  var themes = [
+    { key: '',            label: '기본 블루',    bg: '#f4f6fb', accent: '#3a7ef6', accent2: '#6c47f5' },
+    { key: 'theme-green', label: '슬레이트 그린', bg: '#f0f7f4', accent: '#16a34a', accent2: '#0d9488' },
+    { key: 'theme-amber', label: '워밍 앰버',    bg: '#fdf8f0', accent: '#d97706', accent2: '#b45309' },
+    { key: 'theme-rose',  label: '로즈 핑크',    bg: '#fdf0f3', accent: '#e11d48', accent2: '#9f1239' },
+    { key: 'theme-navy',  label: '딥 네이비',    bg: '#eef2fa', accent: '#1e3a8a', accent2: '#1e40af' }
+  ];
+  var currentTheme = window._currentTheme || '';
+  html += '<div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">'+
+    '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;">🎨 라이트모드 테마</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+
+    themes.map(function(t) {
+      var isActive = currentTheme === t.key;
+      return '<div onclick="applyTheme(\''+t.key+'\')" style="cursor:pointer;border-radius:10px;overflow:hidden;width:110px;border:2px solid '+(isActive?t.accent:'var(--border)')+';transition:all 0.2s;'+(isActive?'box-shadow:0 0 0 3px '+t.accent+'40;':'')+'">'+
+        '<div style="height:36px;background:'+t.bg+';display:flex;align-items:center;justify-content:center;gap:4px;">'+
+          '<div style="width:28px;height:10px;border-radius:3px;background:'+t.accent+'"></div>'+
+          '<div style="width:16px;height:10px;border-radius:3px;background:'+t.accent2+'"></div>'+
+        '</div>'+
+        '<div style="padding:6px 8px;background:#fff;font-size:11px;font-weight:'+(isActive?'700':'500')+';color:'+(isActive?t.accent:'var(--text-muted)')+';text-align:center;">'+
+          (isActive ? '✓ ' : '')+t.label+
+        '</div>'+
+      '</div>';
+    }).join('')+
+    '</div>'+
+  '</div>';
 
   // 저장/취소 버튼
   html += '<div style="display:flex;gap:10px;justify-content:flex-end;padding-top:12px;margin-top:16px;border-top:2px solid var(--border);">'+
