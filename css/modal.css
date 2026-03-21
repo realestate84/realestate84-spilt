@@ -41,10 +41,10 @@
 #kakaoMap{width:100%;height:250px;border-radius:10px;border:1px solid var(--border);margin-top:4px;}
 
 /* ── 전체매물지도 모달 ────────────────────── */
-#mapAllModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;align-items:center;justify-content:center;padding:12px;}
+#mapAllModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;align-items:center;justify-content:center;padding:0;}
 #mapAllModal.active{display:flex;}
-#mapAllModal .modal{max-width:1200px;width:100%;height:95vh;display:flex;flex-direction:column;}
-#mapAll{width:100%;flex:1;border-radius:10px;border:1px solid var(--border);}
+#mapAllModal .modal{max-width:100vw;width:100vw;height:100vh;max-height:100vh;margin:0;border-radius:0;display:flex;flex-direction:column;}
+#mapAll{width:100%;flex:1;min-height:0;border-radius:0;border:none;}
 .map-marker-info{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:180px;font-family:'Noto Sans KR',sans-serif;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,0.12);}
 .map-marker-info .mi-title{font-weight:700;color:var(--accent);margin-bottom:4px;}
 .map-marker-info .mi-addr{color:#1a1a1a;font-weight:600;margin-bottom:2px;}
