@@ -301,6 +301,24 @@
 </div><!-- /split-layout -->
 
 <!-- 등록/수정 모달 -->
+<!-- 화면 캡쳐 영역선택 오버레이 -->
+<div id="screenCaptureOverlay" style="display:none;position:fixed;inset:0;z-index:999999;cursor:crosshair;">
+  <div id="scDimTop"    style="position:absolute;background:rgba(0,0,0,0.5);pointer-events:none;"></div>
+  <div id="scDimBottom" style="position:absolute;background:rgba(0,0,0,0.5);pointer-events:none;"></div>
+  <div id="scDimLeft"   style="position:absolute;background:rgba(0,0,0,0.5);pointer-events:none;"></div>
+  <div id="scDimRight"  style="position:absolute;background:rgba(0,0,0,0.5);pointer-events:none;"></div>
+  <div id="scSelection" style="position:absolute;border:2px solid #3a7ef6;box-shadow:0 0 0 1px rgba(255,255,255,0.5);pointer-events:none;"></div>
+  <div id="scGuide" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.75);color:#fff;padding:14px 24px;border-radius:12px;font-size:15px;font-family:'Noto Sans KR',sans-serif;text-align:center;pointer-events:none;line-height:1.7;">
+    📐 마우스로 드래그해서 캡쳐할 영역을 선택하세요<br>
+    <span style="font-size:12px;opacity:0.75;">ESC 키를 누르면 취소</span>
+  </div>
+  <div id="scSizeLabel" style="position:absolute;background:#3a7ef6;color:#fff;font-size:11px;padding:2px 7px;border-radius:4px;pointer-events:none;display:none;font-family:monospace;"></div>
+  <div id="scConfirmBar" style="display:none;position:absolute;gap:8px;">
+    <button onclick="confirmScreenCapture()" style="background:#3a7ef6;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:14px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,0.3);">✅ 이 영역 캡쳐</button>
+    <button onclick="cancelScreenCapture()" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:8px;padding:8px 14px;font-size:14px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">다시선택</button>
+  </div>
+</div>
+
 <!-- AI 자동입력 모달 -->
 <div class="modal-overlay" id="aiInputModal" onmousedown="_aiModalDs(event)" onmouseup="_aiModalDe(event)">
   <div class="modal" style="max-width:680px;">
@@ -314,16 +332,19 @@
         <span style="color:var(--accent);font-weight:500;">예) 검단 왕길동 토지 300평 매매 5억, 2종일반, 지목 전, 도로접함, 소유자 홍길동 010-1234-5678</span>
       </div>
       <!-- 카메라/이미지 업로드 영역 -->
-      <div style="display:flex;gap:8px;align-items:center;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <button class="btn btn-outline" onclick="document.getElementById('aiCameraInput').click()" style="font-size:13px;gap:6px;display:flex;align-items:center;">
           📷 카메라로 찍기
         </button>
         <button class="btn btn-outline" onclick="document.getElementById('aiImageInput').click()" style="font-size:13px;gap:6px;display:flex;align-items:center;">
           🖼 사진에서 불러오기
         </button>
-        <span id="aiImageName" style="font-size:12px;color:var(--text-muted);"></span>
+        <button class="btn btn-outline" onclick="startScreenCapture()" id="aiScreenCaptureBtn" style="font-size:13px;gap:6px;display:flex;align-items:center;">
+          ✂️ 화면 캡쳐하기
+        </button>
         <input type="file" id="aiCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleAiImage(this)">
         <input type="file" id="aiImageInput" accept="image/*" style="display:none" onchange="handleAiImage(this)">
+        <span id="aiImageName" style="font-size:12px;color:var(--text-muted);"></span>
       </div>
       <!-- 이미지 미리보기 -->
       <div id="aiImagePreview" style="display:none;position:relative;">
@@ -8707,6 +8728,196 @@ function clearAiImage() {
   if(ci) ci.value = '';
   if(ii) ii.value = '';
 }
+
+// ── 화면 캡쳐 (영역 드래그 선택) ─────────────────────────
+var _scStream = null;
+var _scVideoEl = null;
+var _scStartX = 0, _scStartY = 0, _scEndX = 0, _scEndY = 0;
+var _scDragging = false;
+var _scDone = false;
+
+async function startScreenCapture() {
+  try {
+    // 화면 공유 스트림 취득
+    _scStream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false });
+  } catch(e) {
+    if(e.name !== 'NotAllowedError') alert('화면 캡쳐를 시작할 수 없습니다: ' + e.message);
+    return;
+  }
+
+  // 숨겨진 video 요소에 스트림 연결
+  _scVideoEl = document.createElement('video');
+  _scVideoEl.srcObject = _scStream;
+  _scVideoEl.style.display = 'none';
+  document.body.appendChild(_scVideoEl);
+  await _scVideoEl.play();
+
+  // AI 모달 숨기고 오버레이 표시
+  document.getElementById('aiInputModal').classList.remove('active');
+  var overlay = document.getElementById('screenCaptureOverlay');
+  overlay.style.display = 'block';
+  _scDone = false;
+  _scDragging = false;
+
+  // 전체 dim 초기화 (전체 덮기)
+  _scUpdateDim(0, 0, 0, 0, false);
+  document.getElementById('scSelection').style.display = 'none';
+  document.getElementById('scConfirmBar').style.display = 'none';
+  document.getElementById('scSizeLabel').style.display = 'none';
+  document.getElementById('scGuide').style.display = 'block';
+
+  overlay.addEventListener('mousedown', _scOnMouseDown);
+  overlay.addEventListener('mousemove', _scOnMouseMove);
+  overlay.addEventListener('mouseup', _scOnMouseUp);
+  document.addEventListener('keydown', _scOnKeyDown);
+}
+
+function _scOnMouseDown(e) {
+  if(_scDone) return;
+  _scDragging = true;
+  _scStartX = e.clientX;
+  _scStartY = e.clientY;
+  _scEndX = e.clientX;
+  _scEndY = e.clientY;
+  document.getElementById('scGuide').style.display = 'none';
+  document.getElementById('scConfirmBar').style.display = 'none';
+  document.getElementById('scSelection').style.display = 'block';
+  _scUpdateDim(_scStartX, _scStartY, _scEndX, _scEndY, true);
+}
+
+function _scOnMouseMove(e) {
+  if(!_scDragging) return;
+  _scEndX = e.clientX;
+  _scEndY = e.clientY;
+  _scUpdateDim(_scStartX, _scStartY, _scEndX, _scEndY, true);
+}
+
+function _scOnMouseUp(e) {
+  if(!_scDragging) return;
+  _scDragging = false;
+  _scDone = true;
+  _scEndX = e.clientX;
+  _scEndY = e.clientY;
+  _scUpdateDim(_scStartX, _scStartY, _scEndX, _scEndY, true);
+
+  var x1 = Math.min(_scStartX, _scEndX);
+  var y1 = Math.min(_scStartY, _scEndY);
+  var w  = Math.abs(_scEndX - _scStartX);
+  var h  = Math.abs(_scEndY - _scStartY);
+
+  if(w < 10 || h < 10) { _scDone = false; return; } // 너무 작으면 무시
+
+  // 확인 버튼 위치 결정 (선택 영역 아래, 화면 밖으로 벗어나지 않게)
+  var bar = document.getElementById('scConfirmBar');
+  bar.style.display = 'flex';
+  var barTop = Math.min(_scStartY, _scEndY) + h + 10;
+  if(barTop + 50 > window.innerHeight) barTop = Math.max(0, Math.min(_scStartY, _scEndY) - 50);
+  bar.style.top  = barTop + 'px';
+  bar.style.left = Math.min(_scStartX, _scEndX) + 'px';
+  document.getElementById('scSizeLabel').style.display = 'none';
+}
+
+function _scUpdateDim(x1r, y1r, x2r, y2r, showSel) {
+  var W = window.innerWidth, H = window.innerHeight;
+  var x1 = Math.min(x1r, x2r), y1 = Math.min(y1r, y2r);
+  var x2 = Math.max(x1r, x2r), y2 = Math.max(y1r, y2r);
+  var w = x2 - x1, h = y2 - y1;
+
+  var scl = function(id, s) { var el = document.getElementById(id); if(el) Object.assign(el.style, s); };
+
+  if(!showSel) {
+    // 전체 덮기
+    scl('scDimTop',    {top:'0',left:'0',width:W+'px',height:H+'px'});
+    scl('scDimBottom', {display:'none'});
+    scl('scDimLeft',   {display:'none'});
+    scl('scDimRight',  {display:'none'});
+    return;
+  }
+
+  scl('scDimTop',    {display:'block', top:'0',     left:'0',      width:W+'px',     height:y1+'px'});
+  scl('scDimBottom', {display:'block', top:y2+'px', left:'0',      width:W+'px',     height:(H-y2)+'px'});
+  scl('scDimLeft',   {display:'block', top:y1+'px', left:'0',      width:x1+'px',    height:h+'px'});
+  scl('scDimRight',  {display:'block', top:y1+'px', left:x2+'px',  width:(W-x2)+'px',height:h+'px'});
+
+  var sel = document.getElementById('scSelection');
+  if(sel) { sel.style.left=x1+'px'; sel.style.top=y1+'px'; sel.style.width=w+'px'; sel.style.height=h+'px'; }
+
+  // 크기 레이블
+  var lbl = document.getElementById('scSizeLabel');
+  if(lbl && w > 0 && h > 0) {
+    lbl.textContent = w + ' × ' + h;
+    lbl.style.display = 'block';
+    lbl.style.left = (x1+4)+'px';
+    lbl.style.top  = (y1+4)+'px';
+  }
+}
+
+function _scCleanup() {
+  var overlay = document.getElementById('screenCaptureOverlay');
+  overlay.removeEventListener('mousedown', _scOnMouseDown);
+  overlay.removeEventListener('mousemove', _scOnMouseMove);
+  overlay.removeEventListener('mouseup',   _scOnMouseUp);
+  document.removeEventListener('keydown',  _scOnKeyDown);
+  overlay.style.display = 'none';
+  if(_scStream) { _scStream.getTracks().forEach(function(t){ t.stop(); }); _scStream = null; }
+  if(_scVideoEl) { _scVideoEl.remove(); _scVideoEl = null; }
+}
+
+function cancelScreenCapture() {
+  _scCleanup();
+  // 모달 다시 열기
+  document.getElementById('aiInputModal').classList.add('active');
+}
+
+function _scOnKeyDown(e) {
+  if(e.key === 'Escape') cancelScreenCapture();
+}
+
+function confirmScreenCapture() {
+  var x1 = Math.min(_scStartX, _scEndX);
+  var y1 = Math.min(_scStartY, _scEndY);
+  var w  = Math.abs(_scEndX - _scStartX);
+  var h  = Math.abs(_scEndY - _scStartY);
+
+  if(w < 10 || h < 10) { cancelScreenCapture(); return; }
+
+  // 오버레이 숨기고 video 프레임 캡쳐
+  document.getElementById('screenCaptureOverlay').style.display = 'none';
+
+  setTimeout(function() {
+    try {
+      var vw = _scVideoEl.videoWidth;
+      var vh = _scVideoEl.videoHeight;
+      var scaleX = vw / window.innerWidth;
+  var scaleY = vh / window.innerHeight;
+
+      var canvas = document.createElement('canvas');
+      canvas.width  = Math.round(w * scaleX);
+      canvas.height = Math.round(h * scaleY);
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(_scVideoEl,
+        Math.round(x1 * scaleX), Math.round(y1 * scaleY),
+        canvas.width, canvas.height,
+        0, 0, canvas.width, canvas.height
+      );
+
+      var dataUrl = canvas.toDataURL('image/png');
+      _aiImageBase64 = dataUrl.split(',')[1];
+      _aiImageMime   = 'image/png';
+
+      document.getElementById('aiImagePreviewImg').src = dataUrl;
+      document.getElementById('aiImagePreview').style.display = 'block';
+      document.getElementById('aiImageName').textContent = '화면캡쳐.png';
+      document.getElementById('aiInputStatus').textContent = '✂️ 캡쳐 완료! 자동입력 시작을 눌러주세요.';
+    } catch(err) {
+      alert('캡쳐 처리 중 오류가 발생했습니다: ' + err.message);
+    }
+
+    _scCleanup();
+    document.getElementById('aiInputModal').classList.add('active');
+  }, 100);
+}
+// ── 화면 캡쳐 끝 ──────────────────────────────────────────
 
 async function runAiAutoFill() {
   var text = document.getElementById('aiInputText').value.trim();
