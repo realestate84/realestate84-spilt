@@ -35,7 +35,7 @@
 
 </head>
 <body>
-<script>(function(){var t=localStorage.getItem('lightTheme');if(t)document.body.classList.add(t);})();</script>
+<script>(function(){var t=localStorage.getItem('lightTheme');var d=localStorage.getItem('darkMode')==='1';if(t)document.body.classList.add(t);if(d)document.body.classList.add('dark');var lMap={'theme-green':'#16a34a','theme-amber':'#d97706','theme-rose':'#e11d48','theme-navy':'#1e3a8a'};var dMap={'theme-green':'#4ade80','theme-amber':'#fbbf24','theme-rose':'#fb7185','theme-navy':'#60a5fa'};var color=d?(dMap[t]||'#6b9ff8'):(lMap[t]||'#3a7ef6');var meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.setAttribute('content',color);})();</script>
 
 <!-- 로그인 화면 -->
 <!-- 초기 로딩 스피너 (Firebase 인증 확인 중) -->
@@ -5419,6 +5419,7 @@ function toggleDarkMode() {
   localStorage.setItem('darkMode', isDark ? '1' : '0');
   updateDarkModeBtn(isDark);
   updateLogoColor(isDark);
+  updateThemeColor();
 }
 function updateDarkModeBtn(isDark) {
   var btn = document.getElementById('darkModeBtn');
@@ -5928,10 +5929,24 @@ function toggleHeaderMore() {
 window._currentTheme = (function(){ try { return localStorage.getItem('lightTheme') || ''; } catch(e){ return ''; } })();
 var _themeClasses = ['theme-green','theme-amber','theme-rose','theme-navy'];
 
+// ── 테마별 타이틀바 색상 맵 (라이트 / 다크) ──────────────
+var _themeColorMap = {
+  light: { '':'#3a7ef6', 'theme-green':'#16a34a', 'theme-amber':'#d97706', 'theme-rose':'#e11d48', 'theme-navy':'#1e3a8a' },
+  dark:  { '':'#6b9ff8', 'theme-green':'#4ade80', 'theme-amber':'#fbbf24', 'theme-rose':'#fb7185', 'theme-navy':'#60a5fa' }
+};
+function updateThemeColor() {
+  var isDark = document.body.classList.contains('dark');
+  var themeKey = window._currentTheme || '';
+  var map = isDark ? _themeColorMap.dark : _themeColorMap.light;
+  var color = map[themeKey] || (isDark ? '#6b9ff8' : '#3a7ef6');
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute('content', color);
+}
 function applyTheme(themeKey) {
   window._currentTheme = themeKey;
   _themeClasses.forEach(function(c){ document.body.classList.remove(c); });
   if(themeKey) document.body.classList.add(themeKey);
+  updateThemeColor();
   // localStorage 저장 → 새로고침 시 즉시 복원 (같은 기기)
   try { localStorage.setItem('lightTheme', themeKey || ''); } catch(e) {}
   // Firestore 저장 → 다른 기기에서도 복원
