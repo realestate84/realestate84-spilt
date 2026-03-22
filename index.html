@@ -6764,11 +6764,13 @@ function openCustomerDetail(id, keep, targetEl) {
     '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;">'+
       '<div style="min-width:0;">'+
         '<div style="font-size:18px;font-weight:900;line-height:1.2;">'+escapeHtml(c.name||'-')+'</div>'+
-        '<div style="margin-top:4px;font-size:12px;color:var(--text-muted);display:flex;flex-wrap:wrap;align-items:center;gap:8px;">'+
-          '<span>📞 '+(c.phone?'<a href="tel:'+escapeHtml(c.phone)+'" style="color:var(--accent);text-decoration:none;">'+escapeHtml(c.phone)+'</a>':'-')+'</span>'+
-          (c.custType?'<span class="tag tag-'+escapeHtml(c.custType)+'" style="margin-right:4px">'+escapeHtml(c.custType)+'</span>':'')+
-          (c.custGeorae?'<span class="tag tag-'+escapeHtml(c.custGeorae)+'">'+escapeHtml(c.custGeorae)+'</span>':'')+
-          '<span>🗓 등록일시 ' + escapeHtml(c.createdDate||'-') + (c.createdTime ? ' ' + escapeHtml(c.createdTime) : '') + '</span>'+
+        '<div style="margin-top:4px;font-size:12px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">'+
+          '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">'+
+            '<span>📞 '+(c.phone?'<a href="tel:'+escapeHtml(c.phone)+'" style="color:var(--accent);text-decoration:none;">'+escapeHtml(c.phone)+'</a>':'-')+'</span>'+
+            (c.custType?'<span class="tag tag-'+escapeHtml(c.custType)+'" style="margin-right:4px">'+escapeHtml(c.custType)+'</span>':'')+
+            (c.custGeorae?'<span class="tag tag-'+escapeHtml(c.custGeorae)+'">'+escapeHtml(c.custGeorae)+'</span>':'')+
+          '</div>'+
+          '<div><span>🗓 등록일시 ' + escapeHtml(c.createdDate||'-') + (c.createdTime ? ' ' + escapeHtml(c.createdTime) : '') + '</span></div>'+
         '</div>'+
       '</div>'+
       '<div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;">'+
