@@ -6284,7 +6284,11 @@ function forceCloseSettings() {
 // 등록, 수정에서 변경사항이 저장되지 않음 경고 후 설정 패널 닫기
 function closeSettings() {
   console.log('closeSettings 호출됨');
-  if(!confirm('변경사항을 취소하시겠습니까?\n수정한 내용이 저장되지 않아요.')) return;
+  // 저장 후 변경 없으면 확인창 없이 바로 닫기
+  if(!window._settingsSaved) {
+    if(!confirm('변경사항을 취소하시겠습니까?\n수정한 내용이 저장되지 않아요.')) return;
+  }
+  window._settingsSaved = false;
   if (_modalStatePushed) { if (window.history && window.history.back) window.history.back(); return; }
   _tmpFieldSettings = null;
   _tmpCustomFields  = null;
@@ -7452,6 +7456,7 @@ function confirmSettings() {
   saveNoticesToDB();
   startNoticeTicker();
   showToast('✅ 설정이 저장됐어요!');
+  window._settingsSaved = true; // 저장 완료 플래그
 }
 
 function clearMapCenterInput() {
@@ -7830,6 +7835,7 @@ function renderSettingsPanel() {
 
 // 임시 상태 변경 함수들
 function tmpToggleField(type, key, val) {
+  window._settingsSaved = false; // 변경 시 플래그 초기화
   if (_tmpMasterSchema) {
     // 상업용/주거용: visibilityByType 업데이트 (전체 탭=정의만, 타입 탭=표시 여부)
     if (type === '전체') {
@@ -7856,6 +7862,7 @@ function tmpToggleField(type, key, val) {
 }
 
 function tmpAddCustomField() {
+  window._settingsSaved = false;
   var input = document.getElementById('newFieldInput');
   var label = input.value.trim();
   if(!label) return;
@@ -7893,10 +7900,12 @@ function tmpAddCustomField() {
 }
 
 function tmpDeleteCustomField(key) {
+  window._settingsSaved = false;
   tmpDeleteField('전체', key, true);
 }
 
 function tmpDeleteField(activeType, key, isCustom) {
+  window._settingsSaved = false;
   var msg = '이 항목을 항목설정 목록에서 삭제하시겠습니까?\n(매물에 입력된 값은 그대로 남습니다.)';
   if (isCustom) {
     var affected = properties.filter(function(p){ return p[key] && String(p[key]).trim()!==''; });
