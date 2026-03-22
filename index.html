@@ -5420,6 +5420,13 @@ function toggleDarkMode() {
   updateDarkModeBtn(isDark);
   updateLogoColor(isDark);
   updateThemeColor();
+  // Firestore 저장 → 다른 기기 실시간 반영
+  if(db) {
+    db.collection('settings').doc(SETTINGS_DOC).set(
+      { darkMode: isDark ? '1' : '0' },
+      { merge: true }
+    ).catch(function(e){ console.warn('다크모드 저장 실패:', e); });
+  }
 }
 function updateDarkModeBtn(isDark) {
   var btn = document.getElementById('darkModeBtn');
@@ -5727,6 +5734,38 @@ function loadFieldSettings(callback) {
     if(callback) callback();
     if(typeof renderTable === 'function') renderTable();
   });
+
+  // ── 테마/다크모드 실시간 동기화 (onSnapshot) ──────────────────────────────
+  if(!window._themeSnapshotUnsub) {
+    window._themeSnapshotUnsub = db.collection('settings').doc(SETTINGS_DOC)
+      .onSnapshot(function(doc) {
+        if(!doc.exists) return;
+        var data = doc.data();
+        // 테마 실시간 반영
+        if(data.lightTheme !== undefined) {
+          var remoteTheme = data.lightTheme || '';
+          if(window._currentTheme !== remoteTheme) {
+            try { localStorage.setItem('lightTheme', remoteTheme); } catch(e) {}
+            applyTheme(remoteTheme);
+          }
+        }
+        // 다크모드 실시간 반영
+        if(data.darkMode !== undefined) {
+          var remoteDark = data.darkMode === '1';
+          var localDark  = document.body.classList.contains('dark');
+          if(remoteDark !== localDark) {
+            if(remoteDark) { document.body.classList.add('dark'); }
+            else           { document.body.classList.remove('dark'); }
+            localStorage.setItem('darkMode', remoteDark ? '1' : '0');
+            updateDarkModeBtn(remoteDark);
+            updateLogoColor(remoteDark);
+            updateThemeColor();
+          }
+        }
+      }, function(e) {
+        console.warn('테마 실시간 동기화 오류:', e);
+      });
+  }
 }
 
 // ── 상업용 마스터 스키마 마이그레이션 ──────────────────────────────────────
