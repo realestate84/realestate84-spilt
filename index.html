@@ -8378,7 +8378,9 @@ function _openMapCore() {
             createGroupMarkers();
           }
         }, 15000);
-        propsWithAddress.forEach(function(p){ addMarkerAtAddress(p, (p.address||'').trim(), false); });
+        propsWithAddress.forEach(function(p, i){
+          setTimeout(function(){ addMarkerAtAddress(p, (p.address||'').trim(), false); }, i * 50);
+        });
       }
     }).catch(function(e) {
       console.error('전체지도 매물 로드 오류:', e);
