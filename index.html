@@ -8584,7 +8584,7 @@ function _openMapCore() {
           }
         }, 15000);
         propsWithAddress.forEach(function(p, i){
-          setTimeout(function(){ addMarkerAtAddress(p, cleanAddressForGeocode(p.address), false); }, i * 50);
+          setTimeout(function(){ addMarkerAtAddress(p, cleanAddressForGeocode(p.address), false); }, i * 30);
         });
       }
     }).catch(function(e) {
