@@ -8244,6 +8244,10 @@ function _openMapCore() {
       var pending = propsWithAddress.length;
       var _mapTimeoutId;
 
+    function cleanAddressForGeocode(addr) {
+      return addr.replace(/(\d+(?:-\d+)?).*$/, '$1').trim();
+    }
+
     function addToGroup(coords, p) {
       var lat = coords.getLat(), lng = coords.getLng();
       var key = lat.toFixed(6) + ',' + lng.toFixed(6);
@@ -8379,7 +8383,7 @@ function _openMapCore() {
           }
         }, 15000);
         propsWithAddress.forEach(function(p, i){
-          setTimeout(function(){ addMarkerAtAddress(p, (p.address||'').trim(), false); }, i * 50);
+          setTimeout(function(){ addMarkerAtAddress(p, cleanAddressForGeocode(p.address), false); }, i * 50);
         });
       }
     }).catch(function(e) {
