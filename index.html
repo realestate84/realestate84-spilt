@@ -9914,6 +9914,22 @@ function formatAreaVal(raw, storedUnit, displayUnit) {
 
 // 등록/수정 폼 단위 토글
 window.setAreaUnit = function(field, unit) {
+  var unitEl = document.getElementById('f_'+field+'Unit');
+  var numEl = document.getElementById('f_'+field);
+  if(unitEl && numEl) {
+    var prevUnit = unitEl.value;
+    if(prevUnit !== unit) {
+      var raw = (numEl.value || '').trim().replace(/,/g, '');
+      var val = parseFloat(raw);
+      if(!isNaN(val) && val !== 0) {
+        if(prevUnit === 'pyeong' && unit === 'sqm') {
+          numEl.value = Math.round(val * 3.3058 * 100) / 100;
+        } else if(prevUnit === 'sqm' && unit === 'pyeong') {
+          numEl.value = Math.round(val / 3.3058 * 100) / 100;
+        }
+      }
+    }
+  }
   document.getElementById('f_'+field+'Unit').value = unit;
   var btnP = document.getElementById('f_'+field+'Unit_pyeong');
   var btnS = document.getElementById('f_'+field+'Unit_sqm');
