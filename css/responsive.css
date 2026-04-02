@@ -1,0 +1,34 @@
+/* ── 태블릿 이하 (1024px) ─────────────────── */
+@media(max-width:1024px){
+  .header-actions{display:none !important;}
+  .mobile-menu-btn{display:flex !important;}
+  header{flex-wrap:nowrap;gap:10px;}
+  /* 분할 레이아웃: 태블릿에서 고객패널 숨김 */
+  .customer-panel{display:none !important;}
+  .customer-panel.collapsed{display:none !important;}
+  .list-panel{width:100% !important;flex:1 !important;max-width:100% !important;}
+  #customerPanelTab{display:none !important;}
+}
+
+/* ── 모바일 (768px) ───────────────────────── */
+@media(max-width:768px){
+  .logo{white-space:normal;font-size:14px;min-width:0;flex:1 1 auto;}
+  .filter-bar{position:sticky;top:80px;z-index:99;}
+  .container{padding:12px;padding-bottom:max(20px, env(safe-area-inset-bottom, 20px));}
+  .form-grid{grid-template-columns:1fr;}
+  .detail-grid{grid-template-columns:1fr;}
+  .mobile-drawer.open{display:block !important;}
+  /* mainScreen 모바일 높이 보정 */
+  #mainScreen{height:100svh !important;}
+  /* 분할 레이아웃: 모바일에서 고객패널 완전 숨김, 리스트 전체 너비 */
+  .split-layout{flex-direction:row !important;overflow:hidden;}
+  .customer-panel{display:none !important;}
+  .customer-panel.collapsed{display:none !important;}
+  .list-panel{width:100% !important;flex:1 !important;max-width:100% !important;min-height:0;}
+  #customerPanelTab{display:none !important;}
+  /* 기존 customersModal 모바일 스타일 유지 (하위호환) */
+  #customersModal .modal-body{flex-direction:column;overflow:auto;}
+  #customersModal .customer-left{width:100% !important;min-height:30vh;order:2;}
+  #customersModal .customer-left .table-wrap{min-height:185px !important;max-height:37vh !important;flex:1 1 185px;}
+  #customersModal .customer-right{order:1;}
+}

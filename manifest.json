@@ -1,0 +1,26 @@
+{
+  "name": "부동산 영업관리 시스템",
+  "short_name": "영업관리",
+  "description": "부동산 영업관리 시스템",
+  "start_url": "/realestate84-spilt/",
+  "scope": "/realestate84-spilt/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B1B3E",
+  "theme_color": "#C9A84C",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

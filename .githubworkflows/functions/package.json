@@ -1,0 +1,17 @@
+{
+  "name": "functions",
+  "description": "새롬부동산 - Anthropic API 프록시",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions"
+  },
+  "engines": {
+    "node": "18"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-functions": "^4.0.0",
+    "node-fetch": "^2.7.0"
+  },
+  "private": true
+}

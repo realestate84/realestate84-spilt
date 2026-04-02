@@ -1,0 +1,63 @@
+/* ── 버튼 ─────────────────────────────────── */
+.btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:500;transition:all 0.2s;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;}
+.btn-primary:hover{opacity:0.85;}
+.btn-primary:disabled{opacity:0.6;cursor:not-allowed;}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text-muted);}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent);}
+.btn-danger{background:rgba(224,74,90,0.12);color:var(--danger);border:1px solid rgba(224,74,90,0.3);}
+.btn-danger:hover{background:rgba(224,74,90,0.22);}
+.btn-sm{padding:5px 11px;font-size:12px;}
+
+/* ── 거래유형 태그 ────────────────────────── */
+.tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;}
+.tag-매매{background:rgba(58,126,246,0.15);color:#3a7ef6;}
+.tag-전세{background:rgba(108,71,245,0.15);color:#6c47f5;}
+.tag-월세{background:rgba(240,160,48,0.15);color:#f0a030;}
+
+/* ── 매물종류 태그 ────────────────────────── */
+.tag-토지{background:rgba(46,171,122,0.15);color:#2eab7a;}
+.tag-공장창고{background:rgba(224,104,48,0.15);color:#e06830;}
+.tag-상가\/사무실{background:rgba(224,74,90,0.15);color:#e04a5a;}
+.tag-오피스텔{background:rgba(255,152,0,0.15);color:#ff9800;}
+.tag-절대농지{background:rgba(76,175,80,0.15);color:#4caf50;}
+.tag-단독주택{background:rgba(121,85,72,0.15);color:#795548;}
+.tag-펜션{background:rgba(233,30,99,0.15);color:#e91e63;}
+.tag-건물{background:rgba(96,125,139,0.15);color:#607d8b;}
+.tag-아파트{background:rgba(58,126,246,0.15);color:#3a7ef6;}
+.tag-빌라{background:rgba(108,71,245,0.15);color:#6c47f5;}
+.tag-상가주택{background:rgba(230,119,0,0.15);color:#e67700;}
+.tag-원룸{background:rgba(32,170,200,0.15);color:#20aac8;}
+.tag-1\.5룸{background:rgba(233,30,140,0.15);color:#e91e8c;}
+.tag-투룸{background:rgba(156,39,176,0.15);color:#9c27b0;}
+
+/* ── 광고/출발 상태 배지 ──────────────────── */
+.ad-light{display:inline-block;width:10px;height:10px;border-radius:50%;background:#ccc;flex-shrink:0;}
+.ad-light.on{background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,0.7);}
+.ad-light.dim1{background:#facc15;box-shadow:0 0 4px rgba(250,204,21,0.6);}
+.ad-light.dim2{background:#fde68a;box-shadow:none;}
+.ad-light.warn{background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.7);animation:blink 1s infinite;}
+.ad-light.ready{background:#3a7ef6;box-shadow:0 0 6px rgba(58,126,246,0.7);animation:blink 1s infinite;}
+.dep-light{display:inline-block;width:10px;height:10px;border-radius:50%;background:#ccc;flex-shrink:0;}
+.dep-light.on{background:#3a7ef6;box-shadow:0 0 6px rgba(58,126,246,0.7);}
+
+/* ── 폼 요소 ──────────────────────────────── */
+label{font-size:12px;color:var(--text-muted);font-weight:500;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group.full{grid-column:1/-1;}
+.form-input,.form-select,.form-textarea{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:13px;outline:none;transition:border-color 0.2s;width:100%;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);}
+.form-input::placeholder,.form-textarea::placeholder{color:var(--text-muted);}
+.form-textarea{resize:vertical;min-height:240px;}
+
+/* ── 지도 체크박스 필터 ───────────────────── */
+.map-chk-label{display:inline-flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--text);user-select:none;}
+.map-chk-label input{width:14px;height:14px;cursor:pointer;}
+.map-chk-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;}
+
+/* ── 관련사이트 배너 ──────────────────────── */
+.sites-banner-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
+.sites-banner-item{display:block;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;text-decoration:none;color:var(--accent);font-size:16px;font-weight:500;transition:all 0.2s;text-align:left;}
+.sites-banner-item:hover{border-color:var(--accent);background:rgba(58,126,246,0.08);color:var(--accent);}
+.sites-banner-item .site-name{display:block;}

@@ -8242,7 +8242,6 @@ function _openMapCore() {
       var allProps = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       var propsWithAddress = allProps.filter(function(p){ return (p.address||'').trim(); });
       var pending = propsWithAddress.length;
-      var _mapTimeoutId;
 
     function addToGroup(coords, p) {
       var lat = coords.getLat(), lng = coords.getLng();
@@ -8271,7 +8270,6 @@ function _openMapCore() {
     }
 
     function createGroupMarkers() {
-      clearTimeout(_mapTimeoutId);
       var pos = bounds.getSouthWest();
       if(!pos || (pos.getLat()===0 && pos.getLng()===0)) pos = null;
       for(var key in groups) {
@@ -8370,18 +8368,7 @@ function _openMapCore() {
     }
 
       if(pending === 0) createGroupMarkers();
-      else {
-        _mapTimeoutId = setTimeout(function() {
-          if(pending > 0) {
-            console.warn('전체지도: Geocoder 응답 누락으로 15초 타임아웃 — 마커를 강제로 생성합니다.');
-            pending = 0;
-            createGroupMarkers();
-          }
-        }, 15000);
-        propsWithAddress.forEach(function(p, i){
-          setTimeout(function(){ addMarkerAtAddress(p, (p.address||'').trim(), false); }, i * 50);
-        });
-      }
+      else propsWithAddress.forEach(function(p){ addMarkerAtAddress(p, (p.address||'').trim(), false); });
     }).catch(function(e) {
       console.error('전체지도 매물 로드 오류:', e);
       var el = document.getElementById('mapAllInfo');
