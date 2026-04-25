@@ -922,6 +922,7 @@
         <button class="btn btn-primary" id="detailEditBtn" style="font-size:11px;padding:5px 10px;">수정</button>
         <button class="btn btn-outline" id="detailCopyBtn" style="font-size:11px;padding:5px 10px;">📋 복사</button>
         <button class="btn btn-outline" onclick="printDetail()" style="font-size:11px;padding:5px 10px;">🖨 인쇄</button>
+        <button class="btn btn-outline btn-sm" id="detailSmsBtn" title="문자 복사" style="font-size:11px;padding:5px 10px;">📱 문자복사</button>
         <button class="modal-close" onclick="closeDetailModal()">×</button>
       </div>
     </div>
@@ -1744,6 +1745,106 @@ function formatPriceInput(el) {
   var raw = String(el.value || '').replace(/,/g, '').replace(/[^\d]/g, '');
   if (!raw) { el.value = ''; return; }
   el.value = parseInt(raw, 10).toLocaleString('ko-KR');
+}
+
+function copySmsText(p) {
+  function unitLabel(u) { return u === 'sqm' ? '㎡' : '평'; }
+
+  // 시스템 항목 (섹션 무관하게 무조건 제외)
+  var SYSTEM_EXCLUDE = ['createdDate','updatedDate','createdTime','updatedTime',
+                        'adStatus','departure','propNo','photo','docs','photos',
+                        'history','video','notionLink','note','naver',
+                        'id','createdAt','updatedAt','adReady'];
+
+  // 면적 단위 변환이 필요한 항목
+  var AREA_KEYS = ['landArea','roadShare','totalLandArea','roadArea','floorArea',
+                   'totalArea','tempArea','supplyArea','exclusiveArea'];
+
+  // 가격 항목 (formatPriceComma 적용)
+  var PRICE_KEYS = ['price','monthlyRent','pricePerPyeong','officialBuildingPrice',
+                    'officialLandPrice','maintenance','premium'];
+
+  var lines = [];
+
+  // 1. 매물종류 / 거래종류
+  if(p.type || p.georae) lines.push('[' + (p.type||'') + ' / ' + (p.georae||'') + ']');
+
+  // 2. 주소
+  if(p.address) lines.push('📍 ' + p.address);
+
+  // 3. 가격
+  if(p.price) {
+    var priceLabel = (p.georae==='매매')?'매매가':(p.georae==='전세')?'전세가':'보증금';
+    lines.push(priceLabel + ': ' + formatPriceComma(p.price) + ' 만원');
+  }
+  if(p.georae==='월세' && p.monthlyRent) lines.push('월세: ' + formatMonthlyRentComma(p.monthlyRent) + ' 만원');
+
+  // 4. 나머지 항목: 섹션 기준으로 판단
+  // getFieldSection(key, defaultSection) 활용
+  // - 소유자정보 섹션 → 제외
+  // - 시스템 항목 → 제외
+  // - 이미 위에서 처리한 항목 → 제외
+  var alreadyDone = ['type','georae','address','price','monthlyRent','memo'];
+
+  // DEFAULT_FIELDS 순서대로 출력하기 위해 getOrderedFields 활용
+  var ordered = getOrderedFields(p.type || '');
+
+  ordered.forEach(function(f) {
+    var key = f.key;
+    if(SYSTEM_EXCLUDE.indexOf(key) > -1) return;
+    if(!isFieldVisible(p.type, key)) return;
+    if(alreadyDone.indexOf(key) > -1) return;
+    if(key.endsWith('Unit')) return;
+    if(getFieldSection(key, '상세정보') === '소유자정보') return;
+    if(p[key] === '' || p[key] === null || p[key] === undefined) return;
+
+    var val;
+    if(AREA_KEYS.indexOf(key) > -1) {
+      val = p[key] + unitLabel(p[key+'Unit']);
+    } else if(key === 'height') {
+      val = p[key];
+    } else if(key === 'electric') {
+      val = p[key];
+    } else if(PRICE_KEYS.indexOf(key) > -1) {
+      val = formatPriceComma(p[key]) + ' 만원';
+    } else if(key === 'parking') {
+      val = p[key] + '대';
+    } else if(key === 'toilet') {
+      val = p[key] + '개소';
+    } else {
+      val = p[key];
+    }
+    lines.push(f.label + ': ' + val);
+  });
+
+  // 5. 커스텀 항목 (getOrderedFields 에 없는 key들)
+  var handledKeys = ordered.map(function(f){ return f.key; })
+                           .concat(alreadyDone).concat(SYSTEM_EXCLUDE);
+
+  Object.keys(p).forEach(function(key) {
+    if(handledKeys.indexOf(key) > -1) return;
+    if(key.endsWith('Unit')) return;
+    if(p[key] === '' || p[key] === null || p[key] === undefined) return;
+    if(getFieldSection(key, '상세정보') === '소유자정보') return;
+    if(!isFieldVisible(p.type, key)) return;
+    lines.push(getFieldLabel(key, key) + ': ' + p[key]);
+  });
+
+  // 6. 메모
+  if(p.memo) lines.push('\n메모: ' + p.memo);
+
+  var text = lines.join('\n');
+  navigator.clipboard.writeText(text).then(function(){
+    alert('문자용 텍스트가 복사되었습니다!');
+  }).catch(function(){
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('문자용 텍스트가 복사되었습니다!');
+  });
 }
 
 // 정렬/검색/통계용: 매물에서 가격 숫자(만원) 추출 (기존 데이터 호환)
@@ -4404,6 +4505,7 @@ function _openDetailWithData(p) {
   window._dp=p.photos||[];
   document.getElementById('detailEditBtn').onclick=function(){ openEditModal(id); };
   document.getElementById('detailDeleteBtn').onclick=function(){ deleteProperty(id); };
+  document.getElementById('detailSmsBtn').onclick = function(){ copySmsText(p); };
   document.getElementById('detailAdBtn').onclick=function(){ toggleAd(id); };
   document.getElementById('detailDepBtn').onclick=function(){ toggleDeparture(id); };
   document.getElementById('detailCopyBtn').onclick=function(){ copyProperty(id); };
